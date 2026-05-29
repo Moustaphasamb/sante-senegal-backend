@@ -27,7 +27,7 @@ export const createAppointmentSchema = z.object({
   }),
   motif: z.string().min(5, 'Motif trop court (5 min)').max(1000, 'Motif trop long'),
   notes: z.string().max(2000).optional(),
-  price: z.number().int().min(0, 'Prix invalide'),
+  // Le prix est tiré du profil médecin côté serveur — jamais du body client
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -60,6 +60,7 @@ export const getAvailabilitySchema = z.object({
 
 export type ListAppointmentsQuery = z.infer<typeof listAppointmentsSchema>;
 export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
+// Prix résolu côté serveur depuis le profil médecin (non inclus dans l'input client)
 export type CancelAppointmentInput = z.infer<typeof cancelAppointmentSchema>;
 export type RescheduleAppointmentInput = z.infer<typeof rescheduleAppointmentSchema>;
 export type GetAvailabilityQuery = z.infer<typeof getAvailabilitySchema>;

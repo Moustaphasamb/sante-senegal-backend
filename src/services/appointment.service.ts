@@ -204,14 +204,26 @@ class AppointmentService {
     // Vérifier blocage no-show (règle R7)
     await checkPatientNotBlocked(patientProfile.id);
 
-    // Vérifier que le médecin existe et est actif
+    // Vérifier que le médecin existe, est actif, et récupérer le tarif autoritatif
     const medecin = await prisma.medecinProfile.findUnique({
       where: { id: data.medecinId },
-      select: { id: true, userId: true, user: { select: { isActive: true, kycStatus: true } } },
+      select: {
+        id: true,
+        userId: true,
+        consultationPriceMin: true,
+        user: { select: { isActive: true, kycStatus: true } },
+      },
     });
     if (!medecin || !medecin.user.isActive || medecin.user.kycStatus !== 'APPROVED') {
       throw new NotFoundError('Médecin');
     }
+    if (medecin.consultationPriceMin === null || medecin.consultationPriceMin === undefined) {
+      throw new BadRequestError(
+        'Ce médecin n\'a pas encore configuré son tarif de consultation. Veuillez en choisir un autre.'
+      );
+    }
+    // Prix autoritatif : issu du profil médecin, jamais du body client
+    const price = medecin.consultationPriceMin;
 
     const scheduledAt = new Date(data.scheduledAt);
 
@@ -237,16 +249,16 @@ class AppointmentService {
       }
     }
 
-    // Calcul commission 5% (règle R10)
-    const platformFee = Math.round(data.price * CONSULTATION_FEE_PERCENT / 100);
-    const beneficiaryAmount = data.price - platformFee;
+    // Calcul commission 5% (règle R10) — sur le prix autoritatif du médecin
+    const platformFee = Math.round(price * CONSULTATION_FEE_PERCENT / 100);
+    const beneficiaryAmount = price - platformFee;
 
     const result = await prisma.$transaction(async (tx) => {
       const payment = await tx.payment.create({
         data: {
           payerId: patientUserId,
           beneficiaryId: medecin.userId,
-          amount: data.price,
+          amount: price,
           platformFee,
           beneficiaryAmount,
           transactionType: TransactionType.CONSULTATION,
@@ -266,7 +278,7 @@ class AppointmentService {
           mode: data.mode,
           motif: data.motif,
           notes: data.notes,
-          price: data.price,
+          price,
           paymentId: payment.id,
         },
         include: {
@@ -283,7 +295,7 @@ class AppointmentService {
       action: 'CREATE_APPOINTMENT',
       resourceType: 'APPOINTMENT',
       resourceId: result.appointment.id,
-      metadata: { medecinId: data.medecinId, scheduledAt: data.scheduledAt, price: data.price },
+      metadata: { medecinId: data.medecinId, scheduledAt: data.scheduledAt, price },
       ipAddress,
       userAgent,
     });
