@@ -7,7 +7,7 @@
 
 ## 🎯 Phase actuelle
 
-**Phase 2.1 : Module Rendez-vous** (à démarrer)
+**Phase 2.2 : Module Médecin libéral mobile** (à démarrer)
 
 ---
 
@@ -55,6 +55,15 @@
 - [x] Service utilisateurs : `src/services/user.service.ts`
 - [x] Controller : `src/controllers/user.controller.ts`
 - [x] Routes : `src/routes/user.routes.ts`
+- [x] Routes index mis à jour : `src/routes/index.ts`
+
+### Phase 2.1 — Module Rendez-vous ✅ TERMINÉ
+
+- [x] Validators Zod : `src/validators/appointment.validators.ts`
+- [x] Service (disponibilités, R7, Payment, audit) : `src/services/appointment.service.ts`
+- [x] Controller : `src/controllers/appointment.controller.ts`
+- [x] Routes : `src/routes/appointment.routes.ts`
+- [x] `GET /medecins/:id/availability` ajouté dans `src/routes/medecin.routes.ts`
 - [x] Routes index mis à jour : `src/routes/index.ts`
 
 ### Phase 1.5 — Module DME ✅ TERMINÉ
@@ -178,7 +187,8 @@ DELETE /api/v1/establishments/:id                → Désactiver soft delete (SU
 
 ```
 Phase 0  : ████████████████████ 100% ✅
-Phase 1  : ████████████████████  50% (5/10 modules)
+Phase 1  : ████████████████████ 100% (5/5 modules)
+Phase 2  : ██░░░░░░░░░░░░░░░░░░  10% (1/7 modules)
 Phase 2  : ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 3  : ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 4  : ░░░░░░░░░░░░░░░░░░░░   0% (frontend)
