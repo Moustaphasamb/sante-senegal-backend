@@ -7,7 +7,7 @@
 
 ## 🎯 Phase actuelle
 
-**Phase 1.4 : Module Médecins** (à démarrer)
+**Phase 1.5 : Module DME** (à démarrer)
 
 ---
 
@@ -55,6 +55,16 @@
 - [x] Service utilisateurs : `src/services/user.service.ts`
 - [x] Controller : `src/controllers/user.controller.ts`
 - [x] Routes : `src/routes/user.routes.ts`
+- [x] Routes index mis à jour : `src/routes/index.ts`
+
+### Phase 1.4 — Module Médecins ✅ TERMINÉ
+
+- [x] Validators Zod : `src/validators/medecin.validators.ts`
+- [x] `uploadDocument` dans `src/services/upload.service.ts`
+- [x] `uploadDocumentMiddleware` (PDF) dans `src/middleware/upload.middleware.ts`
+- [x] Service (Haversine, KYC, planning upsert) : `src/services/medecin.service.ts`
+- [x] Controller : `src/controllers/medecin.controller.ts`
+- [x] Routes : `src/routes/medecin.routes.ts`
 - [x] Routes index mis à jour : `src/routes/index.ts`
 
 ### Phase 1.3 — Module Établissements de santé ✅ TERMINÉ
@@ -159,7 +169,7 @@ DELETE /api/v1/establishments/:id                → Désactiver soft delete (SU
 
 ```
 Phase 0  : ████████████████████ 100% ✅
-Phase 1  : ███████████████░░░░░  30% (3/10 modules)
+Phase 1  : ████████████████████  40% (4/10 modules)
 Phase 2  : ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 3  : ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 4  : ░░░░░░░░░░░░░░░░░░░░   0% (frontend)
