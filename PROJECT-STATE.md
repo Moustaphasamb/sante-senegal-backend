@@ -7,7 +7,7 @@
 
 ## 🎯 Phase actuelle
 
-**Phase 2.3 : Module Consultations** (à démarrer)
+**Phase 2.4 : Module Ordonnances** (à démarrer)
 
 ---
 
@@ -56,6 +56,14 @@
 - [x] Controller : `src/controllers/user.controller.ts`
 - [x] Routes : `src/routes/user.routes.ts`
 - [x] Routes index mis à jour : `src/routes/index.ts`
+
+### Phase 2.3 — Module Consultations ✅ TERMINÉ
+
+- [x] Validators : `src/validators/consultation.validators.ts`
+- [x] Service (résolution DME, règle 24h, AuditLog) : `src/services/consultation.service.ts`
+- [x] Controller : `src/controllers/consultation.controller.ts`
+- [x] Routes : `src/routes/consultation.routes.ts`
+- [x] Fix : `validateBody` accepte `ZodEffects` (schemas avec `.refine()`)
 
 ### Phase 2.2 — Module Médecin libéral mobile ✅ TERMINÉ ⭐
 
@@ -197,7 +205,7 @@ DELETE /api/v1/establishments/:id                → Désactiver soft delete (SU
 ```
 Phase 0  : ████████████████████ 100% ✅
 Phase 1  : ████████████████████ 100% (5/5 modules)
-Phase 2  : █████░░░░░░░░░░░░░░░  29% (2/7 modules)
+Phase 2  : ████████░░░░░░░░░░░░  43% (3/7 modules)
 Phase 2  : ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 3  : ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 4  : ░░░░░░░░░░░░░░░░░░░░   0% (frontend)
