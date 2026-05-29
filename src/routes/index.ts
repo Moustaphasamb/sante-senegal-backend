@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { healthRoutes } from './health.routes';
 import { authRoutes } from './auth.routes';
 import { userRoutes } from './user.routes';
+import { establishmentRoutes } from './establishment.routes';
 
 const router = Router();
 
@@ -13,6 +14,9 @@ router.use('/auth', authRoutes);
 
 // ─── Utilisateurs & Profils ────────────────────────────
 router.use('/users', userRoutes);
+
+// ─── Établissements de santé ───────────────────────────
+router.use('/establishments', establishmentRoutes);
 
 // ─── Modules futurs (à ajouter au fur et à mesure) ─────
 // router.use('/patients', patientRoutes);

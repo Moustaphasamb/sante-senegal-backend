@@ -7,7 +7,7 @@
 
 ## 🎯 Phase actuelle
 
-**Phase 1.3 : Module Établissements** (à démarrer)
+**Phase 1.4 : Module Médecins** (à démarrer)
 
 ---
 
@@ -57,6 +57,17 @@
 - [x] Routes : `src/routes/user.routes.ts`
 - [x] Routes index mis à jour : `src/routes/index.ts`
 
+### Phase 1.3 — Module Établissements de santé ✅ TERMINÉ
+
+- [x] `validateQuery` ajouté dans `src/middleware/validate.ts`
+- [x] Fix `ts-node` : `"ts-node": { "files": true }` dans `tsconfig.json`
+- [x] Variables d'env complètes dans `.env` (JWT, Redis, etc.)
+- [x] Validators Zod : `src/validators/establishment.validators.ts`
+- [x] Service (Haversine, RBAC, soft delete) : `src/services/establishment.service.ts`
+- [x] Controller : `src/controllers/establishment.controller.ts`
+- [x] Routes : `src/routes/establishment.routes.ts`
+- [x] Routes index mis à jour : `src/routes/index.ts`
+
 ---
 
 ## 📡 Endpoints actifs
@@ -89,6 +100,13 @@ GET  /api/v1/users/me/emergency-contacts         → Lister contacts urgence (au
 POST /api/v1/users/me/emergency-contacts         → Ajouter contact urgence (auth)
 PATCH /api/v1/users/me/emergency-contacts/:id    → Modifier contact urgence (auth)
 DELETE /api/v1/users/me/emergency-contacts/:id   → Supprimer contact urgence (auth)
+
+GET  /api/v1/establishments                      → Liste paginée + filtres (public)
+GET  /api/v1/establishments/nearby               → Recherche géolocalisée Haversine (public)
+GET  /api/v1/establishments/:id                  → Détail complet (public)
+POST /api/v1/establishments                      → Créer (ADMIN_ETABLISSEMENT, SUPER_ADMIN)
+PATCH /api/v1/establishments/:id                 → Modifier (ADMIN = son étab., SUPER_ADMIN = tous)
+DELETE /api/v1/establishments/:id                → Désactiver soft delete (SUPER_ADMIN)
 ```
 
 ### Comptes de test (après seed)
@@ -108,26 +126,32 @@ DELETE /api/v1/users/me/emergency-contacts/:id   → Supprimer contact urgence (
 
 ## ⏭️ Prochaine étape
 
-### Module 3 : Établissements de santé
+### Module 4 : Médecins
 
 **Objectifs :**
-1. Lister et filtrer les hôpitaux, cliniques, postes de santé
-2. Recherche géolocalisée (formule Haversine)
-3. CRUD admin
+1. Annuaire des médecins (liste + filtres + géoloc)
+2. KYC — upload diplômes/CNI
+3. Toggle disponibilité libérale mobile
+4. Planning hebdomadaire
 
 **Fichiers à créer :**
-- `src/validators/establishment.validators.ts`
-- `src/services/establishment.service.ts`
-- `src/controllers/establishment.controller.ts`
-- `src/routes/establishment.routes.ts`
+- `src/validators/medecin.validators.ts`
+- `src/services/medecin.service.ts`
+- `src/controllers/medecin.controller.ts`
+- `src/routes/medecin.routes.ts`
 
 **Endpoints :**
-- `GET /api/v1/establishments`
-- `GET /api/v1/establishments/nearby?lat=X&lng=Y&radius=10`
-- `GET /api/v1/establishments/:id`
-- `POST /api/v1/establishments` (admin)
-- `PATCH /api/v1/establishments/:id` (admin)
-- `DELETE /api/v1/establishments/:id` (super-admin)
+- `GET /api/v1/medecins`
+- `GET /api/v1/medecins/nearby`
+- `GET /api/v1/medecins/:id`
+- `PATCH /api/v1/medecins/me`
+- `POST /api/v1/medecins/me/documents`
+- `POST /api/v1/medecins/me/mobile/toggle`
+- `POST /api/v1/medecins/me/location`
+- `GET /api/v1/medecins/me/schedule`
+- `POST /api/v1/medecins/me/schedule`
+- `POST /api/v1/admin/medecins/:id/approve-kyc`
+- `POST /api/v1/admin/medecins/:id/reject-kyc`
 
 ---
 
@@ -135,7 +159,7 @@ DELETE /api/v1/users/me/emergency-contacts/:id   → Supprimer contact urgence (
 
 ```
 Phase 0  : ████████████████████ 100% ✅
-Phase 1  : ██████████░░░░░░░░░░  20% (2/10 modules)
+Phase 1  : ███████████████░░░░░  30% (3/10 modules)
 Phase 2  : ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 3  : ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 4  : ░░░░░░░░░░░░░░░░░░░░   0% (frontend)
@@ -160,6 +184,14 @@ GLOBAL   : ████░░░░░░░░░░░░░░░░  15%
 - Photo de profil via Cloudinary (mode dev auto-configuré sans credentials)
 - Contacts d'urgence avec limite max 5 et logique isPrimary
 - Soft delete avec révocation des tokens
+- Module 3 — Établissements de santé livré
+- 6 nouveaux endpoints actifs
+- Recherche géolocalisée Haversine (bounding box + distance exacte)
+- RBAC : ADMIN_ÉTABLISSEMENT limité à son propre établissement
+- isVerified : réservé SUPER_ADMIN
+- Soft delete via isActive=false
+- Fix ts-node : `"ts-node": { "files": true }` dans tsconfig.json
+- Variables d'environnement JWT complètes dans .env
 
 ---
 
