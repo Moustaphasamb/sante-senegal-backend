@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AnyZodObject, ZodError } from 'zod';
+import { AnyZodObject, ZodError, ZodTypeAny } from 'zod';
 
 /**
  * Middleware de validation Zod générique.
@@ -30,7 +30,7 @@ export const validate = (schema: AnyZodObject) => {
 /**
  * Validation du body uniquement
  */
-export const validateBody = (schema: AnyZodObject) => {
+export const validateBody = (schema: AnyZodObject | ZodTypeAny) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       req.body = await schema.parseAsync(req.body);
