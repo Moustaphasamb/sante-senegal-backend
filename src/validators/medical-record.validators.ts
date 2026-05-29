@@ -82,6 +82,14 @@ export const createShareTokenSchema = z.object({
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// ACCÈS VIA TOKEN QR (POST /medical-records/access)
+// ═══════════════════════════════════════════════════════════════════
+
+export const accessByTokenSchema = z.object({
+  token: z.string().min(10, 'Token invalide'),
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // TYPES INFÉRÉS
 // ═══════════════════════════════════════════════════════════════════
 
@@ -90,3 +98,4 @@ export type AddAllergyInput = z.infer<typeof addAllergySchema>;
 export type AddChronicConditionInput = z.infer<typeof addChronicConditionSchema>;
 export type UploadMedicalDocInput = z.infer<typeof uploadMedicalDocSchema>;
 export type CreateShareTokenInput = z.infer<typeof createShareTokenSchema>;
+export type AccessByTokenInput = z.infer<typeof accessByTokenSchema>;

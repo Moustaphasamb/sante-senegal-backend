@@ -10,6 +10,7 @@ import {
   addChronicConditionSchema,
   uploadMedicalDocSchema,
   createShareTokenSchema,
+  accessByTokenSchema,
 } from '../validators/medical-record.validators';
 
 const router = Router();
@@ -104,14 +105,16 @@ router.delete(
 // ─── Routes médecin ───────────────────────────────────────────────
 
 /**
- * GET /medical-records/access/:token
+ * POST /medical-records/access
  * Accéder au DME d'un patient via son token QR (médecin)
- * ⚠️ Avant /:patientId pour éviter le conflit de paramètre
+ * Token passé dans le body (jamais dans l'URL pour éviter les logs)
+ * Body: { token: string }
  */
-router.get(
-  '/access/:token',
+router.post(
+  '/access',
   authenticate,
   authorizeAnyMedecin,
+  validateBody(accessByTokenSchema),
   medicalRecordController.accessByToken
 );
 

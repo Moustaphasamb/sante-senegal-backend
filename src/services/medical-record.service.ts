@@ -17,6 +17,51 @@ import type {
 // Constantes
 // ═══════════════════════════════════════════════════════════════════
 
+function hashToken(plaintext: string): string {
+  return crypto.createHash('sha256').update(plaintext).digest('hex');
+}
+
+/**
+ * Filtre les champs du DME selon le niveau d'accès du token :
+ * - LECTURE_SEULE : infos médicales critiques uniquement (urgence)
+ * - LECTURE_ECRITURE : DME complet sans les documents fichiers
+ * - COMPLET : tout
+ */
+function filterDmeByAccessLevel(
+  medicalRecord: Record<string, unknown>,
+  accessLevel: string,
+  patientExtras: { bloodGroup: unknown; height: unknown; weight: unknown }
+) {
+  const emergency = {
+    id: medicalRecord['id'],
+    patientId: medicalRecord['patientId'],
+    allergies: medicalRecord['allergies'],
+    chronicConditions: medicalRecord['chronicConditions'],
+    isSmoker: medicalRecord['isSmoker'],
+    medicalHistory: medicalRecord['medicalHistory'],
+    bloodGroup: patientExtras.bloodGroup,
+    height: patientExtras.height,
+    weight: patientExtras.weight,
+  };
+
+  if (accessLevel === 'LECTURE_SEULE') return emergency;
+
+  const full = {
+    ...emergency,
+    surgicalHistory: medicalRecord['surgicalHistory'],
+    familyHistory: medicalRecord['familyHistory'],
+    alcoholConsumption: medicalRecord['alcoholConsumption'],
+    exerciseLevel: medicalRecord['exerciseLevel'],
+    updatedAt: medicalRecord['updatedAt'],
+    createdAt: medicalRecord['createdAt'],
+  };
+
+  if (accessLevel === 'LECTURE_ECRITURE') return { ...full, medicalDocuments: [] };
+
+  // COMPLET
+  return { ...full, medicalDocuments: medicalRecord['medicalDocuments'] };
+}
+
 const DURATION_MS: Record<string, number> = {
   '1h': 1 * 60 * 60 * 1000,
   '24h': 24 * 60 * 60 * 1000,
@@ -146,12 +191,16 @@ class MedicalRecordService {
       userAgent,
     });
 
-    return {
-      ...medicalRecord,
-      bloodGroup: targetUser.patientProfile.bloodGroup,
-      height: targetUser.patientProfile.height,
-      weight: targetUser.patientProfile.weight,
-    };
+    // Appliquer la projection selon le niveau d'accès du token (Fix #1)
+    return filterDmeByAccessLevel(
+      medicalRecord as unknown as Record<string, unknown>,
+      validToken.accessLevel,
+      {
+        bloodGroup: targetUser.patientProfile.bloodGroup,
+        height: targetUser.patientProfile.height,
+        weight: targetUser.patientProfile.weight,
+      }
+    );
   }
 
   // ─── MISE À JOUR DME ──────────────────────────────────────────
@@ -354,14 +403,16 @@ class MedicalRecordService {
       if (!medecin) throw new NotFoundError('Médecin');
     }
 
-    const token = crypto.randomUUID();
+    // Générer un token fort — stocker le hash SHA-256 en DB, retourner le plaintext une seule fois
+    const plaintextToken = crypto.randomBytes(32).toString('base64url');
+    const tokenHash = hashToken(plaintextToken);
     const expiresAt = new Date(Date.now() + DURATION_MS[data.duration]);
 
     const shareToken = await prisma.documentAccessToken.create({
       data: {
         patientId: patientProfile.id,
         grantedToMedecinId: data.grantedToMedecinId ?? null,
-        token,
+        token: tokenHash,
         accessLevel: data.accessLevel,
         expiresAt,
       },
@@ -382,19 +433,22 @@ class MedicalRecordService {
     });
 
     logger.info('Token de partage créé', { userId, tokenId: shareToken.id, duration: data.duration });
-    return shareToken;
+    // Retourner le plaintext UNE SEULE FOIS pour affichage QR — jamais stocké
+    return { ...shareToken, token: plaintextToken };
   }
 
   // ─── ACCÈS VIA TOKEN QR ───────────────────────────────────────
 
   async accessByToken(
-    token: string,
+    plaintextToken: string,
     medecinUserId: string,
     ipAddress?: string,
     userAgent?: string
   ) {
+    // Lookup par hash — le plaintext n'est jamais stocké en DB
+    const tokenHash = hashToken(plaintextToken);
     const tokenRecord = await prisma.documentAccessToken.findUnique({
-      where: { token },
+      where: { token: tokenHash },
       include: {
         patient: {
           select: { id: true, userId: true, bloodGroup: true, height: true, weight: true },
@@ -403,31 +457,32 @@ class MedicalRecordService {
     });
 
     if (!tokenRecord) throw new NotFoundError('Token de partage');
-
-    if (tokenRecord.revokedAt) {
-      throw new ForbiddenError('Ce token a été révoqué');
-    }
-
-    if (tokenRecord.expiresAt < new Date()) {
-      throw new ForbiddenError('Ce token a expiré');
-    }
+    if (tokenRecord.revokedAt) throw new ForbiddenError('Ce token a été révoqué');
+    if (tokenRecord.expiresAt < new Date()) throw new ForbiddenError('Ce token a expiré');
 
     const medecinProfile = await getMedecinProfile(medecinUserId);
 
-    // Si token lié à un médecin spécifique, vérifier que c'est bien lui
+    // Token lié à un médecin spécifique : vérifier que c'est bien lui
     if (tokenRecord.grantedToMedecinId && tokenRecord.grantedToMedecinId !== medecinProfile.id) {
       throw new ForbiddenError("Ce token est réservé à un autre médecin");
     }
 
-    // Lier ce médecin au token si token ouvert (première utilisation)
+    // Liaison atomique si token ouvert (évite la race condition TOCTOU)
     if (!tokenRecord.grantedToMedecinId) {
-      await prisma.documentAccessToken.update({
-        where: { id: tokenRecord.id },
-        data: {
-          grantedToMedecinId: medecinProfile.id,
-          usedAt: tokenRecord.usedAt ?? new Date(),
-        },
+      const bound = await prisma.documentAccessToken.updateMany({
+        where: { id: tokenRecord.id, grantedToMedecinId: null },
+        data: { grantedToMedecinId: medecinProfile.id, usedAt: new Date() },
       });
+      if (bound.count === 0) {
+        // Un autre médecin a lié le token entre la lecture et l'update
+        const current = await prisma.documentAccessToken.findUnique({
+          where: { id: tokenRecord.id },
+          select: { grantedToMedecinId: true },
+        });
+        if (current?.grantedToMedecinId !== medecinProfile.id) {
+          throw new ForbiddenError("Ce token vient d'être utilisé par un autre médecin");
+        }
+      }
     } else if (!tokenRecord.usedAt) {
       await prisma.documentAccessToken.update({
         where: { id: tokenRecord.id },
@@ -442,25 +497,23 @@ class MedicalRecordService {
       action: 'TOKEN_ACCESS_DME',
       resourceType: 'DME',
       resourceId: medicalRecord.id,
-      metadata: {
-        tokenId: tokenRecord.id,
-        accessLevel: tokenRecord.accessLevel,
-        patientUserId: tokenRecord.patient.userId,
-      },
+      metadata: { tokenId: tokenRecord.id, accessLevel: tokenRecord.accessLevel, patientUserId: tokenRecord.patient.userId },
       ipAddress,
       userAgent,
     });
 
-    return {
-      accessLevel: tokenRecord.accessLevel,
-      expiresAt: tokenRecord.expiresAt,
-      medicalRecord: {
-        ...medicalRecord,
+    // Appliquer la projection selon le niveau d'accès (Fix #1)
+    const filteredDme = filterDmeByAccessLevel(
+      medicalRecord as unknown as Record<string, unknown>,
+      tokenRecord.accessLevel,
+      {
         bloodGroup: tokenRecord.patient.bloodGroup,
         height: tokenRecord.patient.height,
         weight: tokenRecord.patient.weight,
-      },
-    };
+      }
+    );
+
+    return { accessLevel: tokenRecord.accessLevel, expiresAt: tokenRecord.expiresAt, medicalRecord: filteredDme };
   }
 
   // ─── RÉVOQUER TOKEN ───────────────────────────────────────────

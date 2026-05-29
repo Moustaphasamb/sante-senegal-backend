@@ -8,6 +8,7 @@ import type {
   AddChronicConditionInput,
   UploadMedicalDocInput,
   CreateShareTokenInput,
+  AccessByTokenInput,
 } from '../validators/medical-record.validators';
 
 // Extraire IP et User-Agent depuis la requête
@@ -170,10 +171,10 @@ class MedicalRecordController {
     }
   };
 
-  // ─── ACCÈS VIA TOKEN QR ───────────────────────────────────────
+  // ─── ACCÈS VIA TOKEN QR (token dans le body — jamais dans l'URL) ──
 
   accessByToken = async (
-    req: Request<{ token: string }>,
+    req: Request<{}, {}, AccessByTokenInput>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -181,7 +182,7 @@ class MedicalRecordController {
       if (!req.user) throw new UnauthorizedError();
       const { ipAddress, userAgent } = getRequestContext(req);
       const result = await medicalRecordService.accessByToken(
-        req.params.token,
+        req.body.token,
         req.user.userId,
         ipAddress,
         userAgent
