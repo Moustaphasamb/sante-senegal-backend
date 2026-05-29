@@ -143,7 +143,7 @@ class EstablishmentService {
 
   // ─── CRÉATION ────────────────────────────────────────────────
 
-  async create(data: CreateEstablishmentInput) {
+  async create(data: CreateEstablishmentInput, userId: string, userRole: UserRole) {
     if (data.registrationNumber) {
       const existing = await prisma.establishment.findUnique({
         where: { registrationNumber: data.registrationNumber },
@@ -151,37 +151,52 @@ class EstablishmentService {
       if (existing) throw new ConflictError("Ce numéro d'enregistrement est déjà utilisé");
     }
 
-    const establishment = await prisma.establishment.create({
-      data: {
-        name: data.name,
-        type: data.type,
-        address: data.address,
-        city: data.city,
-        region: data.region,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        phoneNumber: data.phoneNumber,
-        email: data.email,
-        website: data.website,
-        description: data.description,
-        registrationNumber: data.registrationNumber,
-        photoUrl: data.photoUrl,
-        coverPhotoUrl: data.coverPhotoUrl,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        openingHours: data.openingHours as any,
-        consultationPriceMin: data.consultationPriceMin,
-        consultationPriceMax: data.consultationPriceMax,
-        services: data.services ?? [],
-        specialties: data.specialties ?? [],
-        isOpen24_7: data.isOpen24_7 ?? false,
-        hasEmergency: data.hasEmergency ?? false,
-        hasParking: data.hasParking ?? false,
-        hasLaboratory: data.hasLaboratory ?? false,
-        hasImaging: data.hasImaging ?? false,
-      },
-    });
+    const establishmentData = {
+      name: data.name,
+      type: data.type,
+      address: data.address,
+      city: data.city,
+      region: data.region,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      phoneNumber: data.phoneNumber,
+      email: data.email,
+      website: data.website,
+      description: data.description,
+      registrationNumber: data.registrationNumber,
+      photoUrl: data.photoUrl,
+      coverPhotoUrl: data.coverPhotoUrl,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      openingHours: data.openingHours as any,
+      consultationPriceMin: data.consultationPriceMin,
+      consultationPriceMax: data.consultationPriceMax,
+      services: data.services ?? [],
+      specialties: data.specialties ?? [],
+      isOpen24_7: data.isOpen24_7 ?? false,
+      hasEmergency: data.hasEmergency ?? false,
+      hasParking: data.hasParking ?? false,
+      hasLaboratory: data.hasLaboratory ?? false,
+      hasImaging: data.hasImaging ?? false,
+      // ADMIN_ETABLISSEMENT : non vérifié par défaut, attend validation SUPER_ADMIN
+      isVerified: false,
+    };
 
-    logger.info('Établissement créé', { id: establishment.id });
+    // ADMIN_ETABLISSEMENT : créer l'établissement et se lier à lui en transaction
+    if (userRole === UserRole.ADMIN_ETABLISSEMENT) {
+      const establishment = await prisma.$transaction(async (tx) => {
+        const created = await tx.establishment.create({ data: establishmentData });
+        await tx.adminProfile.update({
+          where: { userId },
+          data: { establishmentId: created.id },
+        });
+        return created;
+      });
+      logger.info('Établissement créé par admin', { id: establishment.id, userId });
+      return establishment;
+    }
+
+    const establishment = await prisma.establishment.create({ data: establishmentData });
+    logger.info('Établissement créé', { id: establishment.id, userId });
     return establishment;
   }
 
@@ -190,6 +205,11 @@ class EstablishmentService {
   async update(id: string, data: UpdateEstablishmentInput, userId: string, userRole: UserRole) {
     const establishment = await prisma.establishment.findUnique({ where: { id } });
     if (!establishment) throw new NotFoundError('Établissement');
+
+    // Interdire la modification d'un établissement désactivé aux non-super-admins
+    if (!establishment.isActive && userRole !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenError('Cet établissement est désactivé');
+    }
 
     // ADMIN_ÉTABLISSEMENT : vérifier qu'il gère bien cet établissement
     if (userRole === UserRole.ADMIN_ETABLISSEMENT) {
@@ -243,8 +263,9 @@ class EstablishmentService {
         ...(data.hasParking !== undefined && { hasParking: data.hasParking }),
         ...(data.hasLaboratory !== undefined && { hasLaboratory: data.hasLaboratory }),
         ...(data.hasImaging !== undefined && { hasImaging: data.hasImaging }),
-        ...(data.isActive !== undefined && { isActive: data.isActive }),
-        // isVerified : SUPER_ADMIN seulement
+        // isActive et isVerified : SUPER_ADMIN seulement
+        ...(userRole === UserRole.SUPER_ADMIN &&
+          data.isActive !== undefined && { isActive: data.isActive }),
         ...(userRole === UserRole.SUPER_ADMIN &&
           data.isVerified !== undefined && { isVerified: data.isVerified }),
       },

@@ -58,7 +58,7 @@ class EstablishmentController {
   ): Promise<void> => {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const establishment = await establishmentService.create(req.body);
+      const establishment = await establishmentService.create(req.body, req.user.userId, req.user.role);
       sendCreated(res, establishment, 'Établissement créé avec succès');
     } catch (error) {
       next(error);
