@@ -63,6 +63,41 @@ class UploadService {
     });
   }
 
+  // ─── DOCUMENT KYC ────────────────────────────────────────────────
+
+  async uploadDocument(
+    fileBuffer: Buffer,
+    _mimeType: string,
+    userId: string,
+    documentType: string
+  ): Promise<string> {
+    if (!this.isConfigured) {
+      logger.debug('Upload document KYC (mode dev — Cloudinary non configuré)', { userId, documentType });
+      return `https://via.placeholder.com/800x600?text=${documentType}`;
+    }
+
+    return new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: `sante-senegal/users/${userId}/documents`,
+          public_id: documentType,
+          overwrite: true,
+          allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+        },
+        (error, result) => {
+          if (error || !result) {
+            logger.error('Erreur upload document Cloudinary', { error, userId, documentType });
+            reject(error ?? new Error('Upload document échoué'));
+            return;
+          }
+          logger.info('Document uploadé sur Cloudinary', { userId, documentType, url: result.secure_url });
+          resolve(result.secure_url);
+        }
+      );
+      stream.end(fileBuffer);
+    });
+  }
+
   async deleteProfilePhoto(userId: string): Promise<void> {
     if (!this.isConfigured) return;
 

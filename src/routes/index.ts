@@ -3,6 +3,7 @@ import { healthRoutes } from './health.routes';
 import { authRoutes } from './auth.routes';
 import { userRoutes } from './user.routes';
 import { establishmentRoutes } from './establishment.routes';
+import { medecinRoutes } from './medecin.routes';
 
 const router = Router();
 
@@ -18,9 +19,11 @@ router.use('/users', userRoutes);
 // ─── Établissements de santé ───────────────────────────
 router.use('/establishments', establishmentRoutes);
 
+// ─── Médecins ──────────────────────────────────────────────
+router.use('/medecins', medecinRoutes);
+
 // ─── Modules futurs (à ajouter au fur et à mesure) ─────
 // router.use('/patients', patientRoutes);
-// router.use('/medecins', medecinRoutes);
 // router.use('/appointments', appointmentRoutes);
 // router.use('/home-visits', homeVisitRoutes);
 // router.use('/prescriptions', prescriptionRoutes);

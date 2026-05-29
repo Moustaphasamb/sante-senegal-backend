@@ -21,3 +21,22 @@ export const uploadPhotoMiddleware = multer({
   limits: { fileSize: MAX_PHOTO_SIZE_BYTES },
   fileFilter,
 }).single('photo');
+
+// Documents KYC : accepte aussi les PDF
+const MAX_DOC_SIZE_MB = 10;
+const MAX_DOC_SIZE_BYTES = MAX_DOC_SIZE_MB * 1024 * 1024;
+const ALLOWED_DOC_TYPES = [...ALLOWED_IMAGE_TYPES, 'application/pdf'];
+
+const docFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
+  if (!ALLOWED_DOC_TYPES.includes(file.mimetype)) {
+    cb(new BadRequestError('Format non supporté. Formats acceptés : JPEG, PNG, WebP, PDF'));
+    return;
+  }
+  cb(null, true);
+};
+
+export const uploadDocumentMiddleware = multer({
+  storage: memoryStorage,
+  limits: { fileSize: MAX_DOC_SIZE_BYTES },
+  fileFilter: docFilter,
+}).single('document');
