@@ -1,0 +1,1590 @@
+// ═══════════════════════════════════════════════════════════════════
+// SANTÉ SÉNÉGAL — Schéma de base de données
+// Version : 1.0
+// Date : 28 mai 2026
+// Auteur : Baye Tapha Samb
+// ═══════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 1 — ENUMS (Types énumérés)
+// ═══════════════════════════════════════════════════════════════════
+
+enum UserRole {
+  PATIENT
+  MEDECIN_SALARIE          // Médecin rattaché à un établissement
+  MEDECIN_LIBERAL_MOBILE   // Médecin qui se déplace à domicile
+  SPECIALISTE_CABINET      // Spécialiste en cabinet privé
+  INFIRMIER_DOMICILE       // Infirmier soins à domicile
+  PHARMACIEN
+  LIVREUR
+  ADMIN_ETABLISSEMENT
+  SUPER_ADMIN
+}
+
+enum Gender {
+  HOMME
+  FEMME
+  AUTRE
+}
+
+enum BloodGroup {
+  A_POSITIF
+  A_NEGATIF
+  B_POSITIF
+  B_NEGATIF
+  AB_POSITIF
+  AB_NEGATIF
+  O_POSITIF
+  O_NEGATIF
+  INCONNU
+}
+
+enum Language {
+  FR  // Français
+  WO  // Wolof
+  EN  // Anglais (diaspora)
+}
+
+enum KycStatus {
+  PENDING       // En attente vérification
+  APPROVED      // Validé par admin
+  REJECTED      // Refusé
+  SUSPENDED     // Suspendu
+}
+
+enum EstablishmentType {
+  HOPITAL_PUBLIC
+  HOPITAL_PRIVE
+  CLINIQUE
+  POSTE_SANTE
+  CENTRE_SANTE
+  CABINET_MEDICAL
+  CABINET_DENTAIRE
+  LABORATOIRE
+  PHARMACIE
+}
+
+enum MedicalSpecialty {
+  MEDECINE_GENERALE
+  CARDIOLOGIE
+  DERMATOLOGIE
+  GYNECOLOGIE_OBSTETRIQUE
+  PEDIATRIE
+  PSYCHIATRIE
+  CHIRURGIE_GENERALE
+  ORTHOPEDIE
+  OPHTALMOLOGIE
+  ORL
+  GASTROENTEROLOGIE
+  NEUROLOGIE
+  ENDOCRINOLOGIE
+  PNEUMOLOGIE
+  UROLOGIE
+  RADIOLOGIE
+  ANESTHESIE
+  MEDECINE_INTERNE
+  DENTISTE
+  KINESITHERAPIE
+  NUTRITION
+  AUTRE
+}
+
+enum AppointmentMode {
+  PRESENTIEL          // Au cabinet/clinique
+  TELECONSULTATION    // Visio
+  DOMICILE            // Médecin se déplace
+}
+
+enum AppointmentStatus {
+  EN_ATTENTE          // Créé, pas encore confirmé
+  CONFIRME            // Confirmé par praticien
+  EN_COURS            // Consultation en cours
+  TERMINE             // Consultation terminée
+  ANNULE_PATIENT
+  ANNULE_PRATICIEN
+  NO_SHOW             // Patient absent
+  REPROGRAMME
+}
+
+enum HomeVisitStatus {
+  RECHERCHE_MEDECIN   // En attente acceptation
+  ACCEPTEE            // Médecin a accepté
+  EN_ROUTE            // Médecin en déplacement
+  ARRIVEE             // Médecin sur place
+  EN_CONSULTATION
+  TERMINEE
+  ANNULEE_PATIENT
+  ANNULEE_MEDECIN
+  EXPIREE             // Aucun médecin n'a accepté
+}
+
+enum UrgencyLevel {
+  NON_URGENT
+  URGENT
+  TRES_URGENT
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  PARTIELLEMENT_DELIVREE
+  DELIVREE
+  EXPIREE
+  ANNULEE
+}
+
+enum PharmacyOrderStatus {
+  EN_ATTENTE          // Commande reçue
+  ACCEPTEE            // Pharmacien a accepté
+  EN_PREPARATION
+  PRETE               // Prête pour retrait/livraison
+  EN_LIVRAISON
+  LIVREE
+  RETIREE             // Retrait en pharmacie
+  ANNULEE
+  REFUSEE_PHARMACIEN
+}
+
+enum DeliveryStatus {
+  RECHERCHE_LIVREUR
+  ACCEPTEE
+  RECUPEREE           // Livreur a récupéré à la pharmacie
+  EN_ROUTE
+  LIVREE
+  ECHEC               // Patient absent par exemple
+  ANNULEE
+}
+
+enum PaymentMethod {
+  WAVE
+  ORANGE_MONEY
+  FREE_MONEY
+  CARTE_BANCAIRE
+  WALLET_INTERNE
+  ESPECES             // Pour traçabilité paiements en personne
+}
+
+enum PaymentStatus {
+  EN_ATTENTE
+  REUSSI
+  ECHEC
+  REMBOURSE
+  PARTIELLEMENT_REMBOURSE
+  EN_LITIGE
+}
+
+enum TransactionType {
+  CONSULTATION
+  ORDONNANCE
+  LIVRAISON
+  ABONNEMENT
+  COMMISSION
+  REMBOURSEMENT
+  RETRAIT_MEDECIN
+  RETRAIT_PHARMACIE
+}
+
+enum NotificationChannel {
+  SMS
+  PUSH
+  EMAIL
+  WHATSAPP
+  IN_APP
+}
+
+enum NotificationType {
+  RDV_CONFIRMATION
+  RDV_RAPPEL_J1
+  RDV_RAPPEL_H2
+  RDV_ANNULATION
+  ORDONNANCE_RECUE
+  MEDECIN_DOMICILE_DEMANDE
+  MEDECIN_DOMICILE_ACCEPTEE
+  MEDECIN_DOMICILE_EN_ROUTE
+  PHARMACIE_COMMANDE_PRETE
+  LIVRAISON_EN_COURS
+  LIVRAISON_TERMINEE
+  PAIEMENT_REUSSI
+  PAIEMENT_ECHEC
+  URGENCE_SOS
+  SYSTEM
+}
+
+enum VaccinationStatus {
+  EFFECTUE
+  REPORTE
+  REFUSE
+  PROGRAMME
+}
+
+enum AccessLevel {
+  LECTURE_SEULE
+  LECTURE_ECRITURE
+  COMPLET
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 2 — UTILISATEURS & AUTHENTIFICATION
+// ═══════════════════════════════════════════════════════════════════
+
+model User {
+  id              String    @id @default(cuid())
+  phoneNumber     String    @unique               // +221XXXXXXXXX
+  email           String?   @unique
+  passwordHash    String
+  role            UserRole
+
+  // Profil de base
+  firstName       String
+  lastName        String
+  dateOfBirth     DateTime?
+  gender          Gender?
+  profilePhotoUrl String?
+  preferredLanguage Language @default(FR)
+
+  // Statut compte
+  isActive        Boolean   @default(true)
+  isPhoneVerified Boolean   @default(false)
+  isEmailVerified Boolean   @default(false)
+  kycStatus       KycStatus @default(PENDING)
+  kycVerifiedAt   DateTime?
+  kycRejectionReason String?
+
+  // 2FA
+  twoFactorEnabled Boolean  @default(false)
+  twoFactorSecret  String?
+
+  // Métadonnées
+  lastLoginAt     DateTime?
+  lastLoginIp     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  // Relations 1-1 selon rôle (un seul de ces profils est rempli)
+  patientProfile        PatientProfile?
+  medecinProfile        MedecinProfile?
+  pharmacienProfile     PharmacienProfile?
+  livreurProfile        LivreurProfile?
+  adminProfile          AdminProfile?
+
+  // Relations communes
+  otpCodes              OtpCode[]
+  refreshTokens         RefreshToken[]
+  notifications         Notification[]
+  notificationSettings  NotificationSettings?
+  paymentsAsPayer       Payment[]    @relation("PaymentPayer")
+  paymentsAsBeneficiary Payment[]    @relation("PaymentBeneficiary")
+  walletTransactions    WalletTransaction[]
+  wallet                Wallet?
+  auditLogs             AuditLog[]
+  emergencyContacts     EmergencyContact[]
+  sosAlerts             SosAlert[]
+  reviewsGiven          Review[]     @relation("ReviewGiver")
+  reviewsReceived       Review[]     @relation("ReviewTarget")
+
+  @@index([phoneNumber])
+  @@index([role])
+  @@index([kycStatus])
+  @@map("users")
+}
+
+model OtpCode {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneNumber String   // OTP peut être demandé avant création user
+  code        String   // 6 chiffres hashés
+  purpose     String   // "REGISTRATION", "LOGIN", "RESET_PASSWORD"
+  expiresAt   DateTime
+  usedAt      DateTime?
+  attempts    Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([phoneNumber])
+  @@index([expiresAt])
+  @@map("otp_codes")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 3 — PROFILS SPÉCIFIQUES PAR RÔLE
+// ═══════════════════════════════════════════════════════════════════
+
+model PatientProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Identifiants administratifs
+  cniNumber       String?  // Carte nationale d'identité
+  insuranceNumber String?  // Numéro IPRES, mutuelle, etc.
+  insuranceProvider String?
+
+  // Adresse principale
+  address         String?
+  city            String?
+  region          String?  // Dakar, Thiès, Saint-Louis, etc.
+  latitude        Float?
+  longitude       Float?
+
+  // Informations médicales rapides
+  bloodGroup      BloodGroup @default(INCONNU)
+  height          Float?    // cm
+  weight          Float?    // kg
+
+  // Relations DME
+  medicalRecord   MedicalRecord?
+  appointments    Appointment[]
+  homeVisits      HomeVisit[]
+  prescriptions   Prescription[]
+  pharmacyOrders  PharmacyOrder[]
+  documentAccessTokens DocumentAccessToken[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("patient_profiles")
+}
+
+model MedecinProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Identifiants professionnels
+  licenseNumber       String   @unique          // N° Ordre des Médecins
+  diplomaUrl          String?                   // Scan du diplôme
+  cniScanUrl          String?                   // Scan CNI
+  orderCardUrl        String?                   // Scan carte ordre
+
+  // Informations professionnelles
+  specialties         MedicalSpecialty[]
+  yearsOfExperience   Int?
+  languages           Language[]
+  bio                 String?  @db.Text
+  consultationPriceMin Int?    // FCFA
+  consultationPriceMax Int?    // FCFA
+
+  // Établissement (si salarié)
+  establishmentId     String?
+  establishment       Establishment? @relation(fields: [establishmentId], references: [id])
+
+  // Pour MEDECIN_LIBERAL_MOBILE
+  isMobileAvailable   Boolean  @default(false)
+  mobileRadiusKm      Int?     @default(10)     // Rayon en km
+  mobileConsultationPrice Int? // FCFA
+  mobileTravelFee     Int?     // FCFA frais de déplacement
+  currentLatitude     Float?
+  currentLongitude    Float?
+  lastLocationUpdate  DateTime?
+  averageResponseTime Int?     // secondes (moyenne pour acceptation)
+
+  // Notation
+  averageRating       Float    @default(0)
+  totalReviews        Int      @default(0)
+  totalConsultations  Int      @default(0)
+
+  // Statut
+  isVerified          Boolean  @default(false)
+  verifiedAt          DateTime?
+
+  // Relations
+  appointments        Appointment[]
+  homeVisits          HomeVisit[]
+  prescriptions       Prescription[]
+  consultations       Consultation[]
+  availabilitySlots   AvailabilitySlot[]
+  documentAccesses    DocumentAccessToken[]
+  schedules           DoctorSchedule[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([establishmentId])
+  @@index([isMobileAvailable])
+  @@index([currentLatitude, currentLongitude])
+  @@map("medecin_profiles")
+}
+
+model PharmacienProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  licenseNumber   String   @unique           // Autorisation pharmacie
+  authorizationUrl String?                  // Scan autorisation
+
+  pharmacyId      String?  @unique
+  pharmacy        Pharmacy? @relation(fields: [pharmacyId], references: [id])
+
+  isVerified      Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("pharmacien_profiles")
+}
+
+model LivreurProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  cniNumber           String?
+  cniScanUrl          String?
+  driverLicenseUrl    String?
+  vehicleType         String?  // "moto", "voiture", "velo"
+  vehicleRegistration String?
+
+  isAvailable         Boolean  @default(false)
+  currentLatitude     Float?
+  currentLongitude    Float?
+  lastLocationUpdate  DateTime?
+
+  averageRating       Float    @default(0)
+  totalDeliveries     Int      @default(0)
+  isVerified          Boolean  @default(false)
+
+  deliveries          Delivery[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([isAvailable])
+  @@index([currentLatitude, currentLongitude])
+  @@map("livreur_profiles")
+}
+
+model AdminProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  establishmentId String?
+  establishment   Establishment? @relation(fields: [establishmentId], references: [id])
+
+  isSuperAdmin    Boolean  @default(false)
+  permissions     String[] // Liste de permissions granulaires
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("admin_profiles")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 4 — ÉTABLISSEMENTS DE SANTÉ
+// ═══════════════════════════════════════════════════════════════════
+
+model Establishment {
+  id              String              @id @default(cuid())
+  name            String
+  type            EstablishmentType
+  description     String?             @db.Text
+
+  // Identifiants
+  registrationNumber String?          @unique  // Numéro d'enregistrement officiel
+
+  // Localisation
+  address         String
+  city            String
+  region          String
+  latitude        Float
+  longitude       Float
+
+  // Contact
+  phoneNumber     String
+  email           String?
+  website         String?
+  photoUrl        String?
+  coverPhotoUrl   String?
+
+  // Horaires
+  isOpen24_7      Boolean             @default(false)
+  openingHours    Json?               // { mon: {open: "08:00", close: "18:00"}, ... }
+
+  // Services
+  services        String[]            // Services proposés
+  specialties     MedicalSpecialty[]
+  hasEmergency    Boolean             @default(false)
+  hasParking      Boolean             @default(false)
+  hasLaboratory   Boolean             @default(false)
+  hasImaging      Boolean             @default(false)
+
+  // Tarification
+  consultationPriceMin Int?
+  consultationPriceMax Int?
+
+  // Statut
+  isActive        Boolean             @default(true)
+  isVerified      Boolean             @default(false)
+  averageRating   Float               @default(0)
+  totalReviews    Int                 @default(0)
+
+  // Abonnement
+  subscriptionPlan String?            // "BASIC", "PRO", "ENTERPRISE"
+  subscriptionExpiresAt DateTime?
+
+  // Relations
+  medecins        MedecinProfile[]
+  admins          AdminProfile[]
+  appointments    Appointment[]
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([type])
+  @@index([city, region])
+  @@index([latitude, longitude])
+  @@map("establishments")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 5 — DOSSIER MÉDICAL ÉLECTRONIQUE (DME)
+// ═══════════════════════════════════════════════════════════════════
+
+model MedicalRecord {
+  id              String   @id @default(cuid())
+  patientId       String   @unique
+  patient         PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  // Antécédents médicaux
+  medicalHistory  String?  @db.Text
+  surgicalHistory String?  @db.Text
+  familyHistory   String?  @db.Text
+
+  // Allergies
+  allergies       Allergy[]
+
+  // Habitudes de vie
+  isSmoker        Boolean? @default(false)
+  alcoholConsumption String?
+  exerciseLevel   String?
+
+  // Maladies chroniques
+  chronicConditions ChronicCondition[]
+
+  // Relations
+  consultations   Consultation[]
+  examinations    Examination[]
+  vaccinations    Vaccination[]
+  hospitalizations Hospitalization[]
+  medicalDocuments MedicalDocument[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("medical_records")
+}
+
+model Allergy {
+  id              String   @id @default(cuid())
+  medicalRecordId String
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+
+  name            String   // "Pénicilline", "Arachide", etc.
+  severity        String   // "LEGERE", "MODEREE", "SEVERE"
+  reaction        String?  // Description de la réaction
+  diagnosedAt     DateTime?
+  notes           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([medicalRecordId])
+  @@map("allergies")
+}
+
+model ChronicCondition {
+  id              String   @id @default(cuid())
+  medicalRecordId String
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+
+  name            String   // "Diabète type 2", "Hypertension", etc.
+  icd10Code       String?  // Code CIM-10
+  diagnosedAt     DateTime?
+  currentTreatment String? @db.Text
+  notes           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([medicalRecordId])
+  @@map("chronic_conditions")
+}
+
+model Consultation {
+  id              String   @id @default(cuid())
+  medicalRecordId String
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+
+  medecinId       String
+  medecin         MedecinProfile @relation(fields: [medecinId], references: [id])
+
+  // Lien vers le RDV ou la visite à domicile
+  appointmentId   String?  @unique
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id])
+  homeVisitId     String?  @unique
+  homeVisit       HomeVisit? @relation(fields: [homeVisitId], references: [id])
+
+  // Contenu de la consultation
+  consultationDate DateTime
+  motif           String   @db.Text          // Motif de consultation
+  symptoms        String?  @db.Text          // Symptômes
+  examination     String?  @db.Text          // Examen clinique
+  diagnosis       String   @db.Text          // Diagnostic
+  icd10Codes      String[]                   // Codes CIM-10
+  treatment       String?  @db.Text          // Traitement prescrit
+  recommendations String?  @db.Text          // Recommandations
+  followUpNeeded  Boolean  @default(false)
+  followUpDate    DateTime?
+
+  // Signes vitaux
+  bloodPressure   String?  // "120/80"
+  heartRate       Int?     // bpm
+  temperature     Float?   // °C
+  oxygenSaturation Int?    // %
+  weight          Float?   // kg
+  height          Float?   // cm
+
+  // Documents annexes
+  attachments     String[] // URLs Cloudinary
+
+  // Prescription associée
+  prescriptionId  String?  @unique
+  prescription    Prescription?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([medicalRecordId])
+  @@index([medecinId])
+  @@index([consultationDate])
+  @@map("consultations")
+}
+
+model Examination {
+  id              String   @id @default(cuid())
+  medicalRecordId String
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+
+  name            String   // "Prise de sang", "Échographie", etc.
+  type            String   // "BIOLOGIE", "IMAGERIE", "CARDIOLOGIE", etc.
+  prescribedBy    String?  // Médecin prescripteur
+  performedAt     DateTime
+  performedBy     String?  // Laboratoire ou établissement
+  result          String?  @db.Text
+  documentUrls    String[] // Scans des résultats
+  notes           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([medicalRecordId])
+  @@index([performedAt])
+  @@map("examinations")
+}
+
+model Vaccination {
+  id              String   @id @default(cuid())
+  medicalRecordId String
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+
+  vaccineName     String   // "BCG", "COVID-19", "Rougeole", etc.
+  doseNumber      Int      @default(1)
+  totalDoses      Int      @default(1)
+  status          VaccinationStatus
+  administeredAt  DateTime?
+  scheduledFor    DateTime?
+  administeredBy  String?  // Établissement ou praticien
+  batchNumber     String?
+  notes           String?
+  certificateUrl  String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([medicalRecordId])
+  @@map("vaccinations")
+}
+
+model Hospitalization {
+  id              String   @id @default(cuid())
+  medicalRecordId String
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+
+  establishmentName String
+  admissionDate   DateTime
+  dischargeDate   DateTime?
+  reason          String   @db.Text
+  department      String?  // "Cardiologie", "Maternité", etc.
+  diagnosis       String?  @db.Text
+  treatment       String?  @db.Text
+  documentUrls    String[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([medicalRecordId])
+  @@map("hospitalizations")
+}
+
+model MedicalDocument {
+  id              String   @id @default(cuid())
+  medicalRecordId String
+  medicalRecord   MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+
+  title           String
+  category        String   // "ORDONNANCE_ANCIENNE", "CERTIFICAT", "RESULTAT_ANALYSE", "AUTRE"
+  fileUrl         String
+  fileSize        Int?     // bytes
+  mimeType        String?
+  uploadedBy      String?  // userId qui a uploadé
+  notes           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([medicalRecordId])
+  @@map("medical_documents")
+}
+
+// Token temporaire pour partager le DME avec un médecin
+model DocumentAccessToken {
+  id              String   @id @default(cuid())
+  patientId       String
+  patient         PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  grantedToMedecinId String?
+  grantedToMedecin   MedecinProfile? @relation(fields: [grantedToMedecinId], references: [id])
+
+  token           String   @unique  // Token unique (utilisé dans QR code)
+  accessLevel     AccessLevel @default(LECTURE_SEULE)
+
+  expiresAt       DateTime
+  usedAt          DateTime?
+  revokedAt       DateTime?
+
+  createdAt       DateTime @default(now())
+
+  @@index([token])
+  @@index([patientId])
+  @@map("document_access_tokens")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 6 — RENDEZ-VOUS
+// ═══════════════════════════════════════════════════════════════════
+
+model Appointment {
+  id              String   @id @default(cuid())
+
+  patientId       String
+  patient         PatientProfile @relation(fields: [patientId], references: [id])
+
+  medecinId       String
+  medecin         MedecinProfile @relation(fields: [medecinId], references: [id])
+
+  establishmentId String?
+  establishment   Establishment? @relation(fields: [establishmentId], references: [id])
+
+  // Détails du RDV
+  scheduledAt     DateTime
+  durationMinutes Int      @default(30)
+  mode            AppointmentMode
+  status          AppointmentStatus @default(EN_ATTENTE)
+
+  motif           String   @db.Text
+  notes           String?  @db.Text                // Notes patient
+  cancellationReason String?
+
+  // Tarification
+  price           Int      // FCFA
+  paymentId       String?  @unique
+  payment         Payment? @relation(fields: [paymentId], references: [id])
+
+  // Téléconsultation
+  videoRoomUrl    String?
+  videoRoomToken  String?
+
+  // Check-in
+  checkedInAt     DateTime?
+  startedAt       DateTime?
+  endedAt         DateTime?
+
+  // Consultation associée (créée pendant ou après)
+  consultation    Consultation?
+
+  // Rappels envoyés
+  reminderJ1Sent  Boolean  @default(false)
+  reminderH2Sent  Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([medecinId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("appointments")
+}
+
+model DoctorSchedule {
+  id              String   @id @default(cuid())
+  medecinId       String
+  medecin         MedecinProfile @relation(fields: [medecinId], references: [id], onDelete: Cascade)
+
+  dayOfWeek       Int      // 0 = dimanche, 6 = samedi
+  startTime       String   // "08:00"
+  endTime         String   // "18:00"
+  slotDuration    Int      @default(30) // minutes
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([medecinId, dayOfWeek])
+  @@map("doctor_schedules")
+}
+
+model AvailabilitySlot {
+  id              String   @id @default(cuid())
+  medecinId       String
+  medecin         MedecinProfile @relation(fields: [medecinId], references: [id], onDelete: Cascade)
+
+  startTime       DateTime
+  endTime         DateTime
+  isAvailable     Boolean  @default(true)
+  isBlocked       Boolean  @default(false)  // Bloqué (vacances, etc.)
+  blockReason     String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([medecinId, startTime])
+  @@map("availability_slots")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 7 — MÉDECIN LIBÉRAL MOBILE (visites à domicile)
+// ═══════════════════════════════════════════════════════════════════
+
+model HomeVisit {
+  id              String   @id @default(cuid())
+
+  patientId       String
+  patient         PatientProfile @relation(fields: [patientId], references: [id])
+
+  medecinId       String?
+  medecin         MedecinProfile? @relation(fields: [medecinId], references: [id])
+
+  status          HomeVisitStatus @default(RECHERCHE_MEDECIN)
+  urgencyLevel    UrgencyLevel    @default(NON_URGENT)
+  motif           String   @db.Text
+
+  // Localisation patient
+  patientLatitude  Float
+  patientLongitude Float
+  patientAddress   String
+  patientPhoneNumber String
+
+  // Tarification
+  consultationPrice Int   // FCFA
+  travelFee         Int   // FCFA
+  totalPrice        Int   // FCFA
+  paymentId         String? @unique
+  payment           Payment? @relation(fields: [paymentId], references: [id])
+
+  // Suivi temps réel
+  requestedAt     DateTime @default(now())
+  acceptedAt      DateTime?
+  expiresAt       DateTime?       // Si pas accepté avant
+  estimatedArrival DateTime?
+  arrivedAt       DateTime?
+  startedAt       DateTime?
+  endedAt         DateTime?
+
+  // Médecins ayant refusé (pour ne pas leur reproposer)
+  rejectedByMedecinIds String[]
+
+  // Cancellation
+  cancellationReason String?
+  cancelledByRole UserRole?
+
+  // Consultation créée à la fin
+  consultation    Consultation?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([medecinId])
+  @@index([status])
+  @@index([patientLatitude, patientLongitude])
+  @@map("home_visits")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 8 — ORDONNANCES NUMÉRIQUES
+// ═══════════════════════════════════════════════════════════════════
+
+model Prescription {
+  id              String   @id @default(cuid())
+
+  patientId       String
+  patient         PatientProfile @relation(fields: [patientId], references: [id])
+
+  medecinId       String
+  medecin         MedecinProfile @relation(fields: [medecinId], references: [id])
+
+  consultationId  String?  @unique
+  consultation    Consultation? @relation(fields: [consultationId], references: [id])
+
+  // Identifiants uniques
+  prescriptionNumber String @unique           // Numéro lisible : ORD-2026-000123
+  qrCode             String @unique           // Token unique pour QR
+  signatureHash      String                   // Signature électronique du médecin
+
+  // Contenu
+  items           PrescriptionItem[]
+  generalInstructions String? @db.Text
+
+  // Validité
+  issuedAt        DateTime @default(now())
+  validUntil      DateTime                    // Date limite délivrance
+  isRenewable     Boolean  @default(false)
+  renewalsRemaining Int    @default(0)
+
+  // Statut
+  status          PrescriptionStatus @default(ACTIVE)
+
+  // PDF
+  pdfUrl          String?
+
+  // Relations
+  pharmacyOrders  PharmacyOrder[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([medecinId])
+  @@index([prescriptionNumber])
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id              String   @id @default(cuid())
+  prescriptionId  String
+  prescription    Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  medicationId    String?
+  medication      Medication? @relation(fields: [medicationId], references: [id])
+
+  // Description du médicament (au cas où pas dans catalogue)
+  medicationName  String                  // Nom commercial
+  dci             String?                 // Dénomination commune internationale
+  dosage          String                  // "500mg"
+  form            String?                 // "Comprimé", "Sirop", etc.
+
+  // Posologie
+  quantity        Int                     // Nombre de boîtes
+  posology        String   @db.Text       // "1 comprimé matin et soir pendant 7 jours"
+  duration        String                  // "7 jours"
+  instructions    String?  @db.Text       // Instructions particulières
+
+  // Substitution
+  allowGeneric    Boolean  @default(true)
+
+  // Délivrance
+  isDelivered     Boolean  @default(false)
+  deliveredQuantity Int    @default(0)
+
+  createdAt       DateTime @default(now())
+
+  @@index([prescriptionId])
+  @@map("prescription_items")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 9 — PHARMACIES & MÉDICAMENTS
+// ═══════════════════════════════════════════════════════════════════
+
+model Pharmacy {
+  id              String   @id @default(cuid())
+  name            String
+  registrationNumber String? @unique
+
+  // Localisation
+  address         String
+  city            String
+  region          String
+  latitude        Float
+  longitude       Float
+
+  // Contact
+  phoneNumber     String
+  email           String?
+  photoUrl        String?
+
+  // Horaires
+  isOpen24_7      Boolean  @default(false)
+  isOnDuty        Boolean  @default(false)     // Pharmacie de garde actuellement
+  openingHours    Json?
+
+  // Services
+  hasDelivery     Boolean  @default(false)
+  deliveryRadiusKm Int?    @default(5)
+  deliveryFee     Int?     @default(1000)      // FCFA
+  minimumOrder    Int?     @default(0)         // FCFA
+
+  // Statut
+  isActive        Boolean  @default(true)
+  isVerified      Boolean  @default(false)
+  averageRating   Float    @default(0)
+  totalReviews    Int      @default(0)
+
+  // Abonnement
+  subscriptionPlan String?
+  subscriptionExpiresAt DateTime?
+
+  // Relations
+  pharmacien      PharmacienProfile?
+  stocks          PharmacyStock[]
+  orders          PharmacyOrder[]
+  dutySchedules   PharmacyDutySchedule[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([city, region])
+  @@index([latitude, longitude])
+  @@index([isOnDuty])
+  @@map("pharmacies")
+}
+
+// Catalogue national de médicaments
+model Medication {
+  id              String   @id @default(cuid())
+  commercialName  String                       // Nom commercial
+  dci             String                       // Dénomination commune internationale
+  laboratory      String?                      // Laboratoire
+  form            String                       // "Comprimé", "Sirop", "Injection"
+  dosage          String                       // "500mg", "5mg/ml"
+  packagingUnit   String                       // "Boîte de 20", "Flacon 60ml"
+
+  // Classification
+  therapeuticClass String?                     // "Antalgique", "Antibiotique"
+  category        String?                      // "ANTIBIOTIQUE", "ANTIDOULEUR", etc.
+
+  // Régulation
+  requiresPrescription Boolean @default(false)
+  isControlled    Boolean  @default(false)     // Stupéfiants
+  isGeneric       Boolean  @default(false)
+
+  // Prix indicatif national
+  referencePrice  Int?                         // FCFA prix de référence
+
+  // Informations
+  description     String?  @db.Text
+  contraindications String? @db.Text
+  sideEffects     String?  @db.Text
+  imageUrl        String?
+
+  // Statut
+  isActive        Boolean  @default(true)
+
+  // Relations
+  stocks          PharmacyStock[]
+  prescriptionItems PrescriptionItem[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([commercialName])
+  @@index([dci])
+  @@map("medications")
+}
+
+model PharmacyStock {
+  id              String   @id @default(cuid())
+  pharmacyId      String
+  pharmacy        Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  medicationId    String
+  medication      Medication @relation(fields: [medicationId], references: [id])
+
+  quantity        Int      @default(0)
+  price           Int                          // FCFA prix de cette pharmacie
+
+  // Alertes
+  lowStockThreshold Int    @default(5)
+  isLowStock      Boolean  @default(false)
+
+  lastRestockedAt DateTime?
+  lastUpdatedAt   DateTime @default(now())
+
+  @@unique([pharmacyId, medicationId])
+  @@index([medicationId])
+  @@map("pharmacy_stocks")
+}
+
+model PharmacyDutySchedule {
+  id              String   @id @default(cuid())
+  pharmacyId      String
+  pharmacy        Pharmacy @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+
+  startDate       DateTime
+  endDate         DateTime
+
+  createdAt       DateTime @default(now())
+
+  @@index([pharmacyId])
+  @@index([startDate, endDate])
+  @@map("pharmacy_duty_schedules")
+}
+
+model PharmacyOrder {
+  id              String   @id @default(cuid())
+
+  patientId       String
+  patient         PatientProfile @relation(fields: [patientId], references: [id])
+
+  pharmacyId      String
+  pharmacy        Pharmacy @relation(fields: [pharmacyId], references: [id])
+
+  prescriptionId  String?
+  prescription    Prescription? @relation(fields: [prescriptionId], references: [id])
+
+  // Détails commande
+  orderNumber     String   @unique             // CMD-2026-000123
+  items           PharmacyOrderItem[]
+  status          PharmacyOrderStatus @default(EN_ATTENTE)
+
+  // Mode de récupération
+  deliveryMode    String                       // "RETRAIT" ou "LIVRAISON"
+  deliveryAddress String?
+  deliveryLatitude Float?
+  deliveryLongitude Float?
+  deliveryNotes   String?
+
+  // Prix
+  subtotal        Int                          // FCFA total médicaments
+  deliveryFee     Int      @default(0)
+  totalAmount     Int                          // FCFA total
+
+  // Paiement
+  paymentId       String?  @unique
+  payment         Payment? @relation(fields: [paymentId], references: [id])
+
+  // Livraison
+  delivery        Delivery?
+
+  // Timestamps
+  preparedAt      DateTime?
+  readyAt         DateTime?
+  completedAt     DateTime?
+  cancellationReason String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([pharmacyId])
+  @@index([status])
+  @@map("pharmacy_orders")
+}
+
+model PharmacyOrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           PharmacyOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  medicationName  String
+  dci             String?
+  dosage          String
+  quantity        Int
+  unitPrice       Int                          // FCFA
+  totalPrice      Int                          // FCFA
+
+  isSubstituted   Boolean  @default(false)
+  substitutionNote String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([orderId])
+  @@map("pharmacy_order_items")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 10 — LIVRAISON
+// ═══════════════════════════════════════════════════════════════════
+
+model Delivery {
+  id              String   @id @default(cuid())
+
+  orderId         String   @unique
+  order           PharmacyOrder @relation(fields: [orderId], references: [id])
+
+  livreurId       String?
+  livreur         LivreurProfile? @relation(fields: [livreurId], references: [id])
+
+  status          DeliveryStatus @default(RECHERCHE_LIVREUR)
+
+  // Adresses
+  pickupAddress   String
+  pickupLatitude  Float
+  pickupLongitude Float
+
+  deliveryAddress String
+  deliveryLatitude Float
+  deliveryLongitude Float
+
+  // Tarification
+  deliveryFee     Int                          // FCFA payé au livreur
+  platformFee     Int                          // FCFA commission plateforme
+
+  // Tracking temps réel
+  livreurCurrentLat Float?
+  livreurCurrentLng Float?
+  lastLocationUpdate DateTime?
+
+  // Timestamps
+  acceptedAt      DateTime?
+  pickedUpAt      DateTime?
+  deliveredAt     DateTime?
+  estimatedDeliveryTime DateTime?
+
+  // Preuve livraison
+  deliveryPhotoUrl String?
+  signatureUrl    String?
+  failureReason   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([livreurId])
+  @@index([status])
+  @@map("deliveries")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 11 — PAIEMENTS & WALLETS
+// ═══════════════════════════════════════════════════════════════════
+
+model Payment {
+  id              String   @id @default(cuid())
+
+  // Payeur (souvent le patient)
+  payerId         String
+  payer           User     @relation("PaymentPayer", fields: [payerId], references: [id])
+
+  // Bénéficiaire (médecin, pharmacie via leur user)
+  beneficiaryId   String?
+  beneficiary     User?    @relation("PaymentBeneficiary", fields: [beneficiaryId], references: [id])
+
+  // Détails
+  amount          Int                          // FCFA total
+  platformFee     Int      @default(0)         // FCFA commission
+  beneficiaryAmount Int                        // FCFA net pour bénéficiaire
+  currency        String   @default("XOF")
+
+  transactionType TransactionType
+  method          PaymentMethod
+  status          PaymentStatus @default(EN_ATTENTE)
+
+  // Référence externe (Wave, OM)
+  externalReference String? @unique
+  externalProvider  String?                    // "WAVE", "ORANGE_MONEY", etc.
+  externalResponse  Json?                      // Réponse complète du provider
+
+  // Liens (un paiement = une de ces relations)
+  appointment     Appointment?
+  homeVisit       HomeVisit?
+  pharmacyOrder   PharmacyOrder?
+
+  description     String?
+
+  // Timestamps
+  paidAt          DateTime?
+  refundedAt      DateTime?
+  refundAmount    Int?
+  failureReason   String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([payerId])
+  @@index([beneficiaryId])
+  @@index([status])
+  @@index([externalReference])
+  @@map("payments")
+}
+
+model Wallet {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  balance         Int      @default(0)         // FCFA
+  pendingBalance  Int      @default(0)         // FCFA en attente
+  totalEarned     Int      @default(0)
+  totalWithdrawn  Int      @default(0)
+
+  transactions    WalletTransaction[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id              String   @id @default(cuid())
+  walletId        String
+  wallet          Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+
+  type            String                       // "CREDIT" ou "DEBIT"
+  amount          Int                          // FCFA
+  balanceAfter    Int                          // FCFA
+
+  description     String
+  referenceType   String?                      // "PAYMENT", "WITHDRAWAL", "ADJUSTMENT"
+  referenceId     String?                      // ID de l'objet lié
+
+  createdAt       DateTime @default(now())
+
+  @@index([walletId])
+  @@index([userId])
+  @@map("wallet_transactions")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 12 — NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════════
+
+model Notification {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type            NotificationType
+  channel         NotificationChannel
+  title           String
+  message         String   @db.Text
+
+  // Données contextuelles
+  metadata        Json?                        // Données additionnelles (IDs liés)
+  actionUrl       String?                      // Lien de redirection
+
+  // Statut
+  isRead          Boolean  @default(false)
+  readAt          DateTime?
+  isSent          Boolean  @default(false)
+  sentAt          DateTime?
+  isFailed        Boolean  @default(false)
+  failureReason   String?
+
+  // Pour SMS / Email externes
+  externalId      String?                      // ID Twilio, etc.
+
+  scheduledFor    DateTime?                    // Notifications programmées
+
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([scheduledFor])
+  @@map("notifications")
+}
+
+model NotificationSettings {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Canaux activés par défaut
+  smsEnabled      Boolean  @default(true)
+  pushEnabled     Boolean  @default(true)
+  emailEnabled    Boolean  @default(true)
+  whatsappEnabled Boolean  @default(false)
+
+  // Types activés
+  rdvReminders    Boolean  @default(true)
+  prescriptionAlerts Boolean @default(true)
+  paymentAlerts   Boolean  @default(true)
+  promotionalMessages Boolean @default(false)
+
+  // Heures silencieuses
+  quietHoursStart String?  // "22:00"
+  quietHoursEnd   String?  // "07:00"
+
+  updatedAt       DateTime @updatedAt
+
+  @@map("notification_settings")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 13 — URGENCES & CONTACTS
+// ═══════════════════════════════════════════════════════════════════
+
+model EmergencyContact {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name            String
+  phoneNumber     String
+  relationship    String   // "Conjoint", "Parent", "Ami", etc.
+  isPrimary       Boolean  @default(false)
+  notifyOnEmergency Boolean @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@map("emergency_contacts")
+}
+
+model SosAlert {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+
+  latitude        Float
+  longitude       Float
+  address         String?
+
+  message         String?  @db.Text
+
+  // Personnes notifiées
+  samuCalled      Boolean  @default(false)
+  contactsNotified Boolean @default(false)
+
+  isResolved      Boolean  @default(false)
+  resolvedAt      DateTime?
+
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("sos_alerts")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 14 — AVIS & NOTATIONS
+// ═══════════════════════════════════════════════════════════════════
+
+model Review {
+  id              String   @id @default(cuid())
+
+  giverId         String
+  giver           User     @relation("ReviewGiver", fields: [giverId], references: [id])
+
+  targetId        String                        // User cible (médecin, pharmacien, livreur)
+  target          User     @relation("ReviewTarget", fields: [targetId], references: [id])
+
+  targetType      String                        // "MEDECIN", "ESTABLISHMENT", "PHARMACY", "LIVREUR"
+  targetEntityId  String?                       // ID établissement/pharmacie si applicable
+
+  rating          Int                           // 1-5
+  comment         String?  @db.Text
+
+  // Référence contexte
+  appointmentId   String?
+  homeVisitId     String?
+  orderId         String?
+  deliveryId      String?
+
+  // Modération
+  isModerated     Boolean  @default(false)
+  isApproved      Boolean  @default(true)
+  isFlagged       Boolean  @default(false)
+  moderationNotes String?
+
+  // Réponse du praticien
+  response        String?  @db.Text
+  respondedAt     DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([giverId])
+  @@index([targetId])
+  @@index([targetType])
+  @@map("reviews")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 15 — AUDIT LOG (Conformité données médicales)
+// ═══════════════════════════════════════════════════════════════════
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  userId          String?                       // Qui a fait l'action
+  user            User?    @relation(fields: [userId], references: [id])
+
+  action          String                        // "VIEW_MEDICAL_RECORD", "UPDATE_PRESCRIPTION", etc.
+  resourceType    String                        // "PATIENT", "PRESCRIPTION", "DME"
+  resourceId      String                        // ID de la ressource
+
+  // Détails de l'action
+  oldValue        Json?
+  newValue        Json?
+  metadata        Json?
+
+  // Contexte technique
+  ipAddress       String?
+  userAgent       String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FIN DU SCHÉMA
+// ═══════════════════════════════════════════════════════════════════
+//
+// STATISTIQUES :
+// - 15 sections logiques
+// - 40+ modèles
+// - 20+ enums
+// - Indexation optimisée pour performance
+// - Prêt pour migration Prisma
+//
+// PROCHAINES ÉTAPES :
+// 1. Initialiser le projet backend (npm init, Prisma)
+// 2. Configurer .env (DATABASE_URL)
+// 3. npx prisma migrate dev --name init
+// 4. Créer le seed.ts avec données de test
+// ═══════════════════════════════════════════════════════════════════
