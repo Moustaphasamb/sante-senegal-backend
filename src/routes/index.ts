@@ -6,6 +6,7 @@ import { establishmentRoutes } from './establishment.routes';
 import { medecinRoutes } from './medecin.routes';
 import { medicalRecordRoutes } from './medical-record.routes';
 import { appointmentRoutes } from './appointment.routes';
+import { homeVisitRoutes } from './home-visit.routes';
 
 const router = Router();
 
@@ -29,6 +30,9 @@ router.use('/medical-records', medicalRecordRoutes);
 
 // ─── Rendez-vous ────────────────────────────────────────────
 router.use('/appointments', appointmentRoutes);
+
+// ─── Visites à domicile (médecin libéral mobile) ────────────
+router.use('/home-visits', homeVisitRoutes);
 
 // ─── Modules futurs (à ajouter au fur et à mesure) ─────
 // router.use('/patients', patientRoutes);

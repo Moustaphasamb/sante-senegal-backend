@@ -5,6 +5,7 @@ import { config } from './config/env';
 import { logger } from './utils/logger';
 import { testDatabaseConnection, disconnectDatabase } from './config/database';
 import { connectRedis, disconnectRedis } from './config/redis';
+import { initSocket } from './sockets';
 
 const startServer = async (): Promise<void> => {
   try {
@@ -42,6 +43,9 @@ const startServer = async (): Promise<void> => {
     // ─── Création de l'app Express ─────────────────────────
     const app = createApp();
     const server = http.createServer(app);
+
+    // ─── Socket.io ────────────────────────────────────────
+    initSocket(server);
 
     // ─── Démarrage du serveur ──────────────────────────────
     server.listen(config.port, () => {
