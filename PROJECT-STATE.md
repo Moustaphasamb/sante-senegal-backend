@@ -7,7 +7,7 @@
 
 ## 🎯 Phase actuelle
 
-**Phase 2.2 : Module Médecin libéral mobile** (à démarrer)
+**Phase 2.3 : Module Consultations** (à démarrer)
 
 ---
 
@@ -56,6 +56,15 @@
 - [x] Controller : `src/controllers/user.controller.ts`
 - [x] Routes : `src/routes/user.routes.ts`
 - [x] Routes index mis à jour : `src/routes/index.ts`
+
+### Phase 2.2 — Module Médecin libéral mobile ✅ TERMINÉ ⭐
+
+- [x] `src/sockets/index.ts` — Socket.io singleton + events tracking/request/status
+- [x] `src/server.ts` — initSocket() câblé
+- [x] Validators : `src/validators/home-visit.validators.ts`
+- [x] Service (matching Haversine + scoring + timeout 60s) : `src/services/home-visit.service.ts`
+- [x] Controller : `src/controllers/home-visit.controller.ts`
+- [x] Routes : `src/routes/home-visit.routes.ts`
 
 ### Phase 2.1 — Module Rendez-vous ✅ TERMINÉ
 
@@ -188,7 +197,7 @@ DELETE /api/v1/establishments/:id                → Désactiver soft delete (SU
 ```
 Phase 0  : ████████████████████ 100% ✅
 Phase 1  : ████████████████████ 100% (5/5 modules)
-Phase 2  : ██░░░░░░░░░░░░░░░░░░  10% (1/7 modules)
+Phase 2  : █████░░░░░░░░░░░░░░░  29% (2/7 modules)
 Phase 2  : ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 3  : ░░░░░░░░░░░░░░░░░░░░   0%
 Phase 4  : ░░░░░░░░░░░░░░░░░░░░   0% (frontend)
