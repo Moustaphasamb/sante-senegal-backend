@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { UserRole } from '@prisma/client';
 import { medecinController } from '../controllers/medecin.controller';
+import { appointmentController } from '../controllers/appointment.controller';
 import { authenticate, authorize, authorizeAnyMedecin } from '../middleware/authenticate';
 import { validateBody, validateQuery } from '../middleware/validate';
 import { uploadDocumentMiddleware } from '../middleware/upload.middleware';
@@ -13,6 +14,7 @@ import {
   setScheduleSchema,
   rejectKycSchema,
 } from '../validators/medecin.validators';
+import { getAvailabilitySchema } from '../validators/appointment.validators';
 
 const router = Router();
 
@@ -129,6 +131,18 @@ router.post(
   authorize(UserRole.SUPER_ADMIN),
   validateBody(rejectKycSchema),
   medecinController.rejectKyc
+);
+
+// ─── Disponibilités (avant /:id pour éviter conflit) ─────────────
+
+/**
+ * GET /medecins/:id/availability?date=YYYY-MM-DD
+ * Créneaux disponibles d'un médecin pour une journée (public)
+ */
+router.get(
+  '/:id/availability',
+  validateQuery(getAvailabilitySchema),
+  appointmentController.availability
 );
 
 // ─── Route publique par ID (toujours en dernier) ─────────────────

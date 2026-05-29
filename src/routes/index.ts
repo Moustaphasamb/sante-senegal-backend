@@ -5,6 +5,7 @@ import { userRoutes } from './user.routes';
 import { establishmentRoutes } from './establishment.routes';
 import { medecinRoutes } from './medecin.routes';
 import { medicalRecordRoutes } from './medical-record.routes';
+import { appointmentRoutes } from './appointment.routes';
 
 const router = Router();
 
@@ -25,6 +26,9 @@ router.use('/medecins', medecinRoutes);
 
 // ─── Dossier Médical Électronique (DME) ────────────────────
 router.use('/medical-records', medicalRecordRoutes);
+
+// ─── Rendez-vous ────────────────────────────────────────────
+router.use('/appointments', appointmentRoutes);
 
 // ─── Modules futurs (à ajouter au fur et à mesure) ─────
 // router.use('/patients', patientRoutes);
