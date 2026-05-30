@@ -105,6 +105,62 @@ export function initSocket(server: http.Server): Server {
       }
     );
 
+    // ─── Livraison : rejoindre la room après vérification DB ──────
+    socket.on('join-delivery', async (deliveryId: string) => {
+      if (typeof deliveryId !== 'string' || deliveryId.length === 0) return;
+      try {
+        const delivery = await prisma.delivery.findUnique({
+          where: { id: deliveryId },
+          select: {
+            livreur: { select: { userId: true } },
+            order: { select: { patient: { select: { userId: true } } } },
+          },
+        });
+        const isInvolved =
+          delivery?.order.patient.userId === userId || delivery?.livreur?.userId === userId;
+
+        if (isInvolved) {
+          socket.join(`delivery:${deliveryId}`);
+          logger.debug('Socket rejoint room livraison', { deliveryId, userId });
+        } else {
+          socket.emit('error', { message: 'Accès refusé à cette livraison' });
+        }
+      } catch (err) {
+        logger.error('Erreur join-delivery', { deliveryId, userId, err });
+      }
+    });
+
+    // ─── Livraison : tracking GPS — seul le livreur assigné émet ──
+    socket.on(
+      'delivery:tracking',
+      async (data: { deliveryId: string; lat: number; lng: number }) => {
+        if (!data?.deliveryId) return;
+        try {
+          const delivery = await prisma.delivery.findUnique({
+            where: { id: data.deliveryId },
+            select: { livreur: { select: { userId: true } } },
+          });
+          if (delivery?.livreur?.userId !== userId) return; // seul le livreur peut envoyer
+
+          // Persister la dernière position (best-effort)
+          await prisma.delivery.update({
+            where: { id: data.deliveryId },
+            data: {
+              livreurCurrentLat: data.lat,
+              livreurCurrentLng: data.lng,
+              lastLocationUpdate: new Date(),
+            },
+          });
+
+          io?.to(`delivery:${data.deliveryId}`).emit('delivery:tracking', {
+            lat: data.lat,
+            lng: data.lng,
+            timestamp: new Date().toISOString(),
+          });
+        } catch {}
+      }
+    );
+
     socket.on('disconnect', () => {
       logger.debug('Client WebSocket déconnecté', { socketId: socket.id, userId });
     });

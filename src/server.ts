@@ -6,6 +6,7 @@ import { logger } from './utils/logger';
 import { testDatabaseConnection, disconnectDatabase } from './config/database';
 import { connectRedis, disconnectRedis } from './config/redis';
 import { initSocket } from './sockets';
+import { startReminderScheduler, stopReminderScheduler } from './jobs/reminder.job';
 
 const startServer = async (): Promise<void> => {
   try {
@@ -47,6 +48,10 @@ const startServer = async (): Promise<void> => {
     // ─── Socket.io ────────────────────────────────────────
     initSocket(server);
 
+    // ─── Planificateur de rappels RDV (J-1 / H-2) ─────────
+    // Ne dépend pas de Redis — basé sur setInterval
+    startReminderScheduler();
+
     // ─── Démarrage du serveur ──────────────────────────────
     server.listen(config.port, () => {
       logger.info('═══════════════════════════════════════════════════════');
@@ -58,6 +63,8 @@ const startServer = async (): Promise<void> => {
     // ─── Gestion arrêt propre ──────────────────────────────
     const shutdown = async (signal: string): Promise<void> => {
       logger.info(`\n${signal} reçu, arrêt en cours...`);
+
+      stopReminderScheduler();
 
       server.close(async () => {
         logger.info('🛑 Serveur HTTP fermé');

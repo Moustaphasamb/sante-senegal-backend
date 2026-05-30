@@ -8,10 +8,24 @@ import { medicalRecordRoutes } from './medical-record.routes';
 import { appointmentRoutes } from './appointment.routes';
 import { homeVisitRoutes } from './home-visit.routes';
 import { consultationRoutes } from './consultation.routes';
+import { prescriptionRoutes } from './prescription.routes';
+import { medicationRoutes } from './medication.routes';
+import { pharmacyRoutes } from './pharmacy.routes';
+import { pharmacyOrderRoutes } from './pharmacy-order.routes';
+import { deliveryRoutes } from './delivery.routes';
+import { paymentRoutes } from './payment.routes';
+import { walletRoutes } from './wallet.routes';
+import { notificationRoutes } from './notification.routes';
+import { sosRoutes } from './sos.routes';
+import { reviewRoutes } from './review.routes';
+import { auditRoutes } from './audit.routes';
 import { consultationController } from '../controllers/consultation.controller';
-import { authenticate } from '../middleware/authenticate';
-import { validateQuery } from '../middleware/validate';
+import { reviewController } from '../controllers/review.controller';
+import { authenticate, authorize } from '../middleware/authenticate';
+import { validateBody, validateQuery } from '../middleware/validate';
 import { listConsultationsSchema } from '../validators/consultation.validators';
+import { moderateReviewSchema } from '../validators/review.validators';
+import { UserRole } from '@prisma/client';
 
 const router = Router();
 
@@ -41,6 +55,48 @@ router.use('/home-visits', homeVisitRoutes);
 
 // ─── Consultations ──────────────────────────────────────────
 router.use('/consultations', consultationRoutes);
+
+// ─── Ordonnances numériques ─────────────────────────────────
+router.use('/prescriptions', prescriptionRoutes);
+
+// ─── Médicaments (catalogue) ────────────────────────────────
+router.use('/medications', medicationRoutes);
+
+// ─── Pharmacies ─────────────────────────────────────────────
+router.use('/pharmacies', pharmacyRoutes);
+
+// ─── Commandes pharmacie ────────────────────────────────────
+router.use('/pharmacy-orders', pharmacyOrderRoutes);
+
+// ─── Livraisons ─────────────────────────────────────────────
+router.use('/deliveries', deliveryRoutes);
+
+// ─── Paiements ──────────────────────────────────────────────
+router.use('/payments', paymentRoutes);
+
+// ─── Portefeuilles ──────────────────────────────────────────
+router.use('/wallet', walletRoutes);
+
+// ─── Notifications ──────────────────────────────────────────
+router.use('/notifications', notificationRoutes);
+
+// ─── Urgences (SOS) ─────────────────────────────────────────
+router.use('/sos', sosRoutes);
+
+// ─── Avis & Notation ────────────────────────────────────────
+router.use('/reviews', reviewRoutes);
+
+// ─── Audit & Conformité (super-admin) ───────────────────────
+router.use('/admin/audit-logs', auditRoutes);
+
+// ─── Modération d'avis (admin) ──────────────────────────────
+router.post(
+  '/admin/reviews/:id/moderate',
+  authenticate,
+  authorize(UserRole.SUPER_ADMIN),
+  validateBody(moderateReviewSchema),
+  reviewController.moderate
+);
 
 // ─── Historique consultations d'un patient ──────────────────
 router.get(
