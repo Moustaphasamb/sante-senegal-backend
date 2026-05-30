@@ -7,9 +7,9 @@
 
 ## 🎯 Phase actuelle
 
-**Module 19 : Téléconsultation (vidéo)** — à démarrer.
+**Module 20 : Mode offline & sync (frontend)** — à démarrer.
 
-Backend : modules 1 à 18 terminés. Reste les modules 19 (téléconsultation vidéo) et 20 (mode offline & sync).
+Backend : modules 1 à 19 terminés. Reste le module 20 (mode offline & sync, côté frontend).
 
 ---
 
@@ -142,6 +142,19 @@ Backend : modules 1 à 18 terminés. Reste les modules 19 (téléconsultation vi
 - [x] `/stats/global` (SUPER_ADMIN) : utilisateurs par rôle, activité, volume paiements, revenu plateforme
 - [x] 3 endpoints
 
+### Module 19 — Téléconsultation vidéo 🎥
+
+- [x] Modèles Prisma `Teleconsultation` (1-1 avec `Appointment`) + `TeleconsultationMessage` (chat) + enums `TeleconsultationStatus` / `RecordingStatus`
+- [x] Couche provider abstraite `src/services/video/` : interface `VideoProvider`, `DailyProvider` (REST via `fetch`), `MockProvider` (fallback dev), factory `getVideoProvider()` (fail-closed en prod si `DAILY_API_KEY` absent)
+- [x] Session liée au RDV : création idempotente, jetons d'accès **distincts** médecin/patient, cycle `EN_ATTENTE → EN_COURS → TERMINEE`
+- [x] Consentement enregistrement (R6/CDP) **fail-closed** : pas d'enregistrement sans `CONSENTEMENT_DONNE`
+- [x] Chat persisté + Socket.io (room `teleconsultation:{id}`, vérif DB à la connexion)
+- [x] Audit log (join/start/end/recording), RBAC (médecin = start/end/recording, patient = consentement)
+- [x] Lien module 8 : réutilise `POST /consultations` avec l'`appointmentId` (aucune route nouvelle)
+- [x] 11 endpoints — testé de bout en bout en mode mock (login seed → RDV → flux complet → consultation DME)
+
+> ⚠️ Twilio Video abandonné (fin de vie). Provider réel = **Daily.co**. En prod : définir `DAILY_API_KEY` (sinon refus de démarrage). Endpoints recording de `DailyProvider` à ajuster au branchement réel.
+
 ---
 
 ## 📡 Endpoints actifs (récapitulatif)
@@ -228,6 +241,13 @@ GET    /api/v1/admin/audit-logs | /admin/audit-logs/resource/:resourceType/:reso
 
 # Statistiques
 GET    /api/v1/stats/me | /stats/establishment/:id | /stats/global
+
+# Téléconsultation vidéo + WebSocket (room teleconsultation:{id})
+POST   /api/v1/teleconsultations   |  GET /me | /:id
+POST   /api/v1/teleconsultations/:id/join | /start | /end
+PATCH  /api/v1/teleconsultations/:id/recording-consent
+POST   /api/v1/teleconsultations/:id/recording/start | /recording/stop
+GET/POST /api/v1/teleconsultations/:id/messages
 ```
 
 ---
@@ -249,10 +269,11 @@ GET    /api/v1/stats/me | /stats/establishment/:id | /stats/global
 
 ## ⏭️ Prochaine étape
 
-### Module 19 : Téléconsultation (vidéo)
+### Module 20 : Mode offline & sync (frontend)
 
-Intégrer la vidéo (WebRTC) via un service externe — à étudier : Twilio Video, Daily.co, ou Jitsi.
-Le champ `videoRoomUrl`/`videoRoomToken` existe déjà sur le modèle `Appointment`.
+DME consultable hors-ligne, files d'actions en attente, synchronisation au retour de connexion.
+⚠️ Ce module est **côté frontend** — dépend du démarrage du frontend PWA (phase 4).
+Le backend est désormais complet (modules 1 à 19).
 
 ### Module 20 : Mode offline & sync
 
