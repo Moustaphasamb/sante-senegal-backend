@@ -1033,7 +1033,8 @@ git commit -m "feat(module-X): description"
 1. **Lire CE document** en entier
 2. **Lire `PROJECT-STATE.md`** pour savoir où on en est
 3. **Lire `ROADMAP.md`** pour le prochain module
-4. Demander : **"Quel module veux-tu construire aujourd'hui ?"**
+4. **Consulter `ROLES.md`** quand le module touche aux permissions/RBAC
+5. Demander : **"Quel module veux-tu construire aujourd'hui ?"**
 
 ### Quand l'utilisateur dit "fais X"
 
@@ -1072,6 +1073,21 @@ git commit -m "feat(module-X): description"
 - **Step-by-step** avec commandes exactes
 - **Si CMD** : précise toujours `cmd` pas `powershell`
 - **Si erreur** : explique la cause, pas seulement la solution
+
+### 📚 Documents stratégiques du projet
+
+Garde toujours ces fichiers à l'esprit. Tu dois savoir lequel consulter selon le besoin :
+
+| Fichier | Quand le consulter |
+|---|---|
+| `CLAUDE.md` (ce document) | Référence permanente, conventions, workflow |
+| `PROJECT-STATE.md` | Avant chaque nouvelle tâche, pour savoir où on en est |
+| `ROADMAP.md` | Pour choisir le prochain module et voir les dépendances |
+| `ROLES.md` | À chaque fois qu'un endpoint demande RBAC ou permissions |
+| `SANTE-SENEGAL-SPECIFICATION.md` | Pour les détails fonctionnels et user stories |
+| `prisma/schema.prisma` | Pour la structure de données exacte |
+| `README.md` | Pour les commandes d'installation et de lancement |
+| `AUTH-MODULE-GUIDE.md` | Pour comprendre comment tester l'auth (référence) |
 
 ---
 

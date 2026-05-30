@@ -128,11 +128,12 @@ Copie-colle EXACTEMENT ce message à Claude Code :
 Salut ! Je travaille sur le projet "Santé Sénégal", une plateforme tout-en-un
 pour la santé au Sénégal.
 
-Lis IMPÉRATIVEMENT ces 4 fichiers dans cet ordre avant de répondre :
+Lis IMPÉRATIVEMENT ces 5 fichiers dans cet ordre avant de répondre :
 1. CLAUDE.md (document maître - lis-le ENTIÈREMENT)
 2. PROJECT-STATE.md (où on en est)
 3. ROADMAP.md (ce qui reste à faire)
-4. prisma/schema.prisma (la structure DB)
+4. ROLES.md (rôles et permissions - CRUCIAL pour RBAC)
+5. prisma/schema.prisma (la structure DB)
 
 Ensuite, donne-moi un résumé de :
 - Ce que tu as compris du projet

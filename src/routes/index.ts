@@ -19,6 +19,7 @@ import { notificationRoutes } from './notification.routes';
 import { sosRoutes } from './sos.routes';
 import { reviewRoutes } from './review.routes';
 import { auditRoutes } from './audit.routes';
+import { statsRoutes } from './stats.routes';
 import { consultationController } from '../controllers/consultation.controller';
 import { reviewController } from '../controllers/review.controller';
 import { authenticate, authorize } from '../middleware/authenticate';
@@ -88,6 +89,9 @@ router.use('/reviews', reviewRoutes);
 
 // ─── Audit & Conformité (super-admin) ───────────────────────
 router.use('/admin/audit-logs', auditRoutes);
+
+// ─── Statistiques & Dashboards ──────────────────────────────
+router.use('/stats', statsRoutes);
 
 // ─── Modération d'avis (admin) ──────────────────────────────
 router.post(
