@@ -20,6 +20,7 @@ import { sosRoutes } from './sos.routes';
 import { reviewRoutes } from './review.routes';
 import { auditRoutes } from './audit.routes';
 import { statsRoutes } from './stats.routes';
+import { teleconsultationRoutes } from './teleconsultation.routes';
 import { consultationController } from '../controllers/consultation.controller';
 import { reviewController } from '../controllers/review.controller';
 import { authenticate, authorize } from '../middleware/authenticate';
@@ -92,6 +93,9 @@ router.use('/admin/audit-logs', auditRoutes);
 
 // ─── Statistiques & Dashboards ──────────────────────────────
 router.use('/stats', statsRoutes);
+
+// ─── Téléconsultation vidéo ─────────────────────────────────
+router.use('/teleconsultations', teleconsultationRoutes);
 
 // ─── Modération d'avis (admin) ──────────────────────────────
 router.post(

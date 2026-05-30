@@ -29,13 +29,14 @@ class TeleconsultationController {
   };
 
   listMine = async (
-    req: Request<{}, {}, {}, ListTeleconsultationsQuery>,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
       if (!req.user) throw new UnauthorizedError();
-      const result = await teleconsultationService.listMine(req.user.userId, req.query);
+      const query = req.query as unknown as ListTeleconsultationsQuery;
+      const result = await teleconsultationService.listMine(req.user.userId, query);
       sendSuccess(res, result);
     } catch (error) {
       next(error);
