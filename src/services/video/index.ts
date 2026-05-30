@@ -16,6 +16,11 @@ export function getVideoProvider(): VideoProvider {
 
   if (config.video.dailyApiKey) {
     cached = new DailyProvider();
+  } else if (config.isProd) {
+    // Fail-closed : interdit le provider mock en production (app médicale).
+    throw new Error(
+      'DAILY_API_KEY requis en production — refus de démarrer avec le provider vidéo MOCK'
+    );
   } else {
     logger.warn('⚠️ DAILY_API_KEY absent → provider vidéo MOCK (dev uniquement)');
     cached = new MockProvider();
