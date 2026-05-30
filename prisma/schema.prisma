@@ -231,6 +231,22 @@ enum AccessLevel {
   COMPLET
 }
 
+enum TeleconsultationStatus {
+  EN_ATTENTE   // room provisionnée, appel pas démarré
+  EN_COURS     // démarrée par le médecin
+  TERMINEE
+  ANNULEE
+}
+
+enum RecordingStatus {
+  AUCUN
+  CONSENTEMENT_REFUSE
+  CONSENTEMENT_DONNE
+  EN_COURS
+  DISPONIBLE          // URL d'enregistrement disponible
+  ECHEC
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // SECTION 2 — UTILISATEURS & AUTHENTIFICATION
 // ═══════════════════════════════════════════════════════════════════
@@ -290,6 +306,7 @@ model User {
   sosAlerts             SosAlert[]
   reviewsGiven          Review[]     @relation("ReviewGiver")
   reviewsReceived       Review[]     @relation("ReviewTarget")
+  teleconsultationMessages TeleconsultationMessage[]
 
   @@index([phoneNumber])
   @@index([role])
@@ -839,6 +856,9 @@ model Appointment {
   // Consultation associée (créée pendant ou après)
   consultation    Consultation?
 
+  // Téléconsultation associée (mode TELECONSULTATION)
+  teleconsultation Teleconsultation?
+
   // Rappels envoyés
   reminderJ1Sent  Boolean  @default(false)
   reminderH2Sent  Boolean  @default(false)
@@ -851,6 +871,55 @@ model Appointment {
   @@index([scheduledAt])
   @@index([status])
   @@map("appointments")
+}
+
+model Teleconsultation {
+  id                  String   @id @default(cuid())
+
+  appointmentId       String   @unique
+  appointment         Appointment @relation(fields: [appointmentId], references: [id])
+
+  // Provider
+  provider            String   // "daily" | "mock"
+  providerRoomId      String
+  roomUrl             String
+  medecinToken        String?  // jeton d'accès médecin (rôle owner)
+  patientToken        String?  // jeton d'accès patient
+
+  // Cycle de vie
+  status              TeleconsultationStatus @default(EN_ATTENTE)
+  startedAt           DateTime?
+  endedAt             DateTime?
+
+  // Enregistrement + consentement (R6 / CDP)
+  recordingStatus     RecordingStatus @default(AUCUN)
+  recordingConsentAt  DateTime?
+  recordingUrl        String?
+  providerRecordingId String?
+
+  messages            TeleconsultationMessage[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([status])
+  @@map("teleconsultations")
+}
+
+model TeleconsultationMessage {
+  id                  String   @id @default(cuid())
+
+  teleconsultationId  String
+  teleconsultation    Teleconsultation @relation(fields: [teleconsultationId], references: [id], onDelete: Cascade)
+
+  senderId            String   // userId
+  sender              User     @relation(fields: [senderId], references: [id])
+  content             String   @db.Text
+
+  createdAt           DateTime @default(now())
+
+  @@index([teleconsultationId])
+  @@map("teleconsultation_messages")
 }
 
 model DoctorSchedule {
