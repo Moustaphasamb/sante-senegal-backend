@@ -161,6 +161,36 @@ export function initSocket(server: http.Server): Server {
       }
     );
 
+    // ─── Téléconsultation : rejoindre la room après vérification DB ──
+    socket.on('join-teleconsultation', async (teleconsultationId: string) => {
+      if (typeof teleconsultationId !== 'string' || teleconsultationId.length === 0) return;
+      try {
+        const tele = await prisma.teleconsultation.findUnique({
+          where: { id: teleconsultationId },
+          select: {
+            appointment: {
+              select: {
+                patient: { select: { userId: true } },
+                medecin: { select: { userId: true } },
+              },
+            },
+          },
+        });
+        const isInvolved =
+          tele?.appointment.patient.userId === userId ||
+          tele?.appointment.medecin.userId === userId;
+
+        if (isInvolved) {
+          socket.join(`teleconsultation:${teleconsultationId}`);
+          logger.debug('Socket rejoint room téléconsultation', { teleconsultationId, userId });
+        } else {
+          socket.emit('error', { message: 'Accès refusé à cette téléconsultation' });
+        }
+      } catch (err) {
+        logger.error('Erreur join-teleconsultation', { teleconsultationId, userId, err });
+      }
+    });
+
     socket.on('disconnect', () => {
       logger.debug('Client WebSocket déconnecté', { socketId: socket.id, userId });
     });
