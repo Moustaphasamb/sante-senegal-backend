@@ -94,7 +94,7 @@ class TeleconsultationController {
         ipAddress,
         userAgent
       );
-      sendSuccess(res, result, 'Téléconsultation démarrée');
+      sendSuccess(res, result, { message: 'Téléconsultation démarrée' });
     } catch (error) {
       next(error);
     }
@@ -114,7 +114,7 @@ class TeleconsultationController {
         ipAddress,
         userAgent
       );
-      sendSuccess(res, result, 'Téléconsultation terminée');
+      sendSuccess(res, result, { message: 'Téléconsultation terminée' });
     } catch (error) {
       next(error);
     }
@@ -132,7 +132,7 @@ class TeleconsultationController {
         req.user.userId,
         req.body.consent
       );
-      sendSuccess(res, result, 'Consentement enregistré');
+      sendSuccess(res, result, { message: 'Consentement enregistré' });
     } catch (error) {
       next(error);
     }
@@ -152,7 +152,7 @@ class TeleconsultationController {
         ipAddress,
         userAgent
       );
-      sendSuccess(res, result, 'Enregistrement démarré');
+      sendSuccess(res, result, { message: 'Enregistrement démarré' });
     } catch (error) {
       next(error);
     }
@@ -172,7 +172,7 @@ class TeleconsultationController {
         ipAddress,
         userAgent
       );
-      sendSuccess(res, result, 'Enregistrement arrêté');
+      sendSuccess(res, result, { message: 'Enregistrement arrêté' });
     } catch (error) {
       next(error);
     }
