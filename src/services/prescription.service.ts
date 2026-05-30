@@ -41,7 +41,7 @@ async function getPatientProfile(userId: string) {
 
 /** Vérifie que l'utilisateur a accès à cette ordonnance */
 async function checkAccess(
-  prescription: { patientId: string; medecinId: string },
+  prescription: { id: string; patientId: string; medecinId: string },
   userId: string,
   userRole: UserRole
 ) {
@@ -50,11 +50,31 @@ async function checkAccess(
     if (prescription.patientId !== p.id) throw new ForbiddenError("Cette ordonnance ne vous appartient pas");
     return;
   }
-  if (userRole === UserRole.PHARMACIEN) return; // pharmaciens peuvent vérifier QR/détail
-  // Médecin ou admin
+  if (userRole === UserRole.SUPER_ADMIN) return;
+  if (userRole === UserRole.PHARMACIEN) {
+    // Un pharmacien ne voit une ordonnance par son ID que si elle a été
+    // présentée à SA pharmacie (commande liée). Pour la vérification avant
+    // délivrance, utiliser le token QR via verifyByToken().
+    const pharmacist = await prisma.pharmacienProfile.findUnique({
+      where: { userId },
+      select: { pharmacyId: true },
+    });
+    if (!pharmacist?.pharmacyId) {
+      throw new ForbiddenError("Aucune pharmacie n'est associée à votre compte");
+    }
+    const linkedOrder = await prisma.pharmacyOrder.findFirst({
+      where: { prescriptionId: prescription.id, pharmacyId: pharmacist.pharmacyId },
+      select: { id: true },
+    });
+    if (!linkedOrder) {
+      throw new ForbiddenError("Cette ordonnance n'a pas été présentée à votre pharmacie");
+    }
+    return;
+  }
+  // Médecin auteur uniquement
   const m = await prisma.medecinProfile.findUnique({ where: { userId }, select: { id: true } });
   if (!m || prescription.medecinId !== m.id) {
-    if (userRole !== UserRole.SUPER_ADMIN) throw new ForbiddenError("Cette ordonnance ne vous appartient pas");
+    throw new ForbiddenError("Cette ordonnance ne vous appartient pas");
   }
 }
 
@@ -210,6 +230,32 @@ class PrescriptionService {
     });
     if (!prescription) throw new NotFoundError('Ordonnance');
     await checkAccess(prescription, userId, userRole);
+    return prescription;
+  }
+
+  // ─── VÉRIFIER PAR TOKEN QR (preuve de possession) ─────────────
+
+  /**
+   * Vérifie une ordonnance via son token QR (pharmacien avant délivrance).
+   * La possession du token = preuve d'accès (le QR a été présenté physiquement).
+   */
+  async verifyByToken(qrToken: string) {
+    const prescription = await prisma.prescription.findUnique({
+      where: { qrCode: qrToken },
+      include: {
+        items: true,
+        medecin: {
+          select: {
+            licenseNumber: true,
+            specialties: true,
+            user: { select: { firstName: true, lastName: true } },
+            establishment: { select: { name: true, address: true, city: true } },
+          },
+        },
+        patient: { select: { user: { select: { firstName: true, lastName: true, dateOfBirth: true } } } },
+      },
+    });
+    if (!prescription) throw new NotFoundError('Ordonnance');
     return prescription;
   }
 

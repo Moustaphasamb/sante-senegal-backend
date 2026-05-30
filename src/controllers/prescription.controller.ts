@@ -62,6 +62,22 @@ class PrescriptionController {
     }
   };
 
+  // ─── VÉRIFIER PAR TOKEN QR (pharmacien) ───────────────────────
+
+  verifyByToken = async (
+    req: Request<{ token: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      const prescription = await prescriptionService.verifyByToken(req.params.token);
+      sendSuccess(res, prescription, { message: 'Ordonnance vérifiée' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // ─── PDF ──────────────────────────────────────────────────────
 
   getPdf = async (

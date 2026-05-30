@@ -1,6 +1,7 @@
 import { Router } from 'express';
+import { UserRole } from '@prisma/client';
 import { prescriptionController } from '../controllers/prescription.controller';
-import { authenticate, authorizeAnyMedecin } from '../middleware/authenticate';
+import { authenticate, authorize, authorizeAnyMedecin } from '../middleware/authenticate';
 import { validateBody, validateQuery } from '../middleware/validate';
 import {
   createPrescriptionSchema,
@@ -33,8 +34,20 @@ router.get(
 );
 
 /**
+ * GET /prescriptions/verify/:token
+ * Vérifier une ordonnance via son token QR (pharmacien, avant délivrance)
+ * ⚠ AVANT /:id — preuve de possession du QR
+ */
+router.get(
+  '/verify/:token',
+  authenticate,
+  authorize(UserRole.PHARMACIEN),
+  prescriptionController.verifyByToken
+);
+
+/**
  * GET /prescriptions/:id
- * Détail d'une ordonnance (patient concerné, médecin auteur, pharmacien, admin)
+ * Détail d'une ordonnance (patient concerné, médecin auteur, pharmacien avec commande liée, admin)
  */
 router.get('/:id', authenticate, prescriptionController.getById);
 
