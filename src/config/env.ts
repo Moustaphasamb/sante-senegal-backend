@@ -64,6 +64,10 @@ const envSchema = z.object({
   // Mapbox
   MAPBOX_ACCESS_TOKEN: z.string().optional(),
 
+  // Téléconsultation vidéo (Daily.co)
+  DAILY_API_KEY: z.string().optional(),
+  DAILY_DOMAIN: z.string().optional(),
+
   // Firebase
   FIREBASE_PROJECT_ID: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),
@@ -172,6 +176,11 @@ export const config = {
 
   mapbox: {
     accessToken: env.MAPBOX_ACCESS_TOKEN,
+  },
+
+  video: {
+    dailyApiKey: env.DAILY_API_KEY,
+    dailyDomain: env.DAILY_DOMAIN,
   },
 
   firebase: {
