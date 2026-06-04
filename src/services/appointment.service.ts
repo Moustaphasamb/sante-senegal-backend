@@ -157,6 +157,10 @@ class AppointmentService {
           medecin: {
             select: { user: { select: { firstName: true, lastName: true, profilePhotoUrl: true } }, specialties: true },
           },
+          // Côté praticien, on joint le patient pour afficher sa file de patients.
+          ...(userRole !== UserRole.PATIENT && {
+            patient: { select: { user: { select: { id: true, firstName: true, lastName: true, profilePhotoUrl: true } } } },
+          }),
           establishment: { select: { id: true, name: true, city: true } },
           payment: { select: { status: true, amount: true } },
         },
@@ -191,6 +195,9 @@ class AppointmentService {
         medecin: {
           select: { user: { select: { firstName: true, lastName: true, profilePhotoUrl: true } }, specialties: true },
         },
+        ...(userRole !== UserRole.PATIENT && {
+          patient: { select: { user: { select: { id: true, firstName: true, lastName: true, profilePhotoUrl: true } } } },
+        }),
         establishment: { select: { id: true, name: true, city: true } },
       },
     });
@@ -313,6 +320,9 @@ class AppointmentService {
         medecin: {
           select: { id: true, user: { select: { firstName: true, lastName: true, profilePhotoUrl: true } }, specialties: true },
         },
+        ...(userRole !== UserRole.PATIENT && {
+          patient: { select: { user: { select: { id: true, firstName: true, lastName: true, profilePhotoUrl: true } } } },
+        }),
         establishment: true,
         payment: { select: { status: true, amount: true, method: true } },
       },
