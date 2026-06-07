@@ -47,6 +47,7 @@ const ORDER_INCLUDE = {
   pharmacy: { select: { id: true, name: true, address: true, city: true, phoneNumber: true } },
   patient: { select: { user: { select: { firstName: true, lastName: true, phoneNumber: true } } } },
   prescription: { select: { id: true, prescriptionNumber: true } },
+  delivery: { select: { id: true, status: true } },
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════
