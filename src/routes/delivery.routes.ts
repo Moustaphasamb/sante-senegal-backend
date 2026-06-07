@@ -25,6 +25,13 @@ router.get(
 );
 
 /**
+ * GET /deliveries/me
+ * Mes courses (livreur) — actives + historique
+ * ⚠ AVANT /:id/...
+ */
+router.get('/me', authenticate, authorize(UserRole.LIVREUR), deliveryController.mine);
+
+/**
  * POST /deliveries/:id/accept      (livreur)
  */
 router.post('/:id/accept', authenticate, authorize(UserRole.LIVREUR), deliveryController.accept);

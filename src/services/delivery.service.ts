@@ -91,6 +91,17 @@ class DeliveryService {
     return deliveries;
   }
 
+  // ─── MES COURSES (livreur) ────────────────────────────────────
+
+  async mine(userId: string) {
+    const livreur = await getLivreurProfile(userId);
+    return prisma.delivery.findMany({
+      where: { livreurId: livreur.id },
+      orderBy: { createdAt: 'desc' },
+      include: DELIVERY_INCLUDE,
+    });
+  }
+
   // ─── ACCEPTER (livreur) ───────────────────────────────────────
 
   async accept(id: string, userId: string) {

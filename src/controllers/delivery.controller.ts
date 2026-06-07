@@ -22,6 +22,18 @@ class DeliveryController {
     }
   };
 
+  // ─── MES COURSES (livreur) ────────────────────────────────────
+
+  mine = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      const deliveries = await deliveryService.mine(req.user.userId);
+      sendSuccess(res, deliveries);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // ─── ACCEPTER (livreur) ───────────────────────────────────────
 
   accept = async (

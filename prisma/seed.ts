@@ -407,6 +407,33 @@ async function main() {
   console.log(`   ✅ 1 pharmacie + 1 pharmacien créés`);
 
   // ═══════════════════════════════════════════════════════════════
+  // 5b. LIVREUR
+  // ═══════════════════════════════════════════════════════════════
+  const livreur = await prisma.user.upsert({
+    where: { phoneNumber: '+221790000002' },
+    update: {},
+    create: {
+      phoneNumber: '+221790000002',
+      passwordHash: await bcrypt.hash('Livreur2026!', 12),
+      role: UserRole.LIVREUR,
+      firstName: 'Modou',
+      lastName: 'Faye',
+      preferredLanguage: Language.FR,
+      isPhoneVerified: true,
+      kycStatus: 'APPROVED',
+      livreurProfile: {
+        create: {
+          vehicleType: 'moto',
+          isVerified: true,
+          isAvailable: true,
+        },
+      },
+    },
+  });
+
+  console.log(`   ✅ 1 livreur créé (${livreur.firstName} ${livreur.lastName})`);
+
+  // ═══════════════════════════════════════════════════════════════
   // 6. CATALOGUE MÉDICAMENTS
   // ═══════════════════════════════════════════════════════════════
   console.log('💉 Création du catalogue médicaments...');
