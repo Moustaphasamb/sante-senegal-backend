@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MedicalSpecialty, Language } from '@prisma/client';
+import { MedicalSpecialty, Language, KycStatus } from '@prisma/client';
 
 // ═══════════════════════════════════════════════════════════════════
 // HELPERS LOCAUX
@@ -95,6 +95,12 @@ export const setScheduleSchema = z.object({
 // ═══════════════════════════════════════════════════════════════════
 // APPROVE / REJECT KYC (admin)
 // ═══════════════════════════════════════════════════════════════════
+
+// LISTE PAR STATUT KYC (GET /medecins/admin/kyc) — SUPER_ADMIN
+export const listKycSchema = z.object({
+  status: z.nativeEnum(KycStatus).default(KycStatus.PENDING),
+});
+export type ListKycQuery = z.infer<typeof listKycSchema>;
 
 export const rejectKycSchema = z.object({
   reason: z.string().min(10, 'Raison trop courte (10 min)').max(500, 'Raison trop longue'),

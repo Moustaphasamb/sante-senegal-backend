@@ -130,6 +130,34 @@ class MedecinService {
     };
   }
 
+  // ─── LISTE PAR STATUT KYC (SUPER_ADMIN) ───────────────────────
+
+  async listByKyc(status: KycStatus) {
+    return prisma.medecinProfile.findMany({
+      where: { user: { kycStatus: status, deletedAt: null } },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        licenseNumber: true,
+        specialties: true,
+        languages: true,
+        yearsOfExperience: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phoneNumber: true,
+            kycStatus: true,
+            kycRejectionReason: true,
+            createdAt: true,
+          },
+        },
+        establishment: { select: { id: true, name: true, city: true, type: true } },
+      },
+    });
+  }
+
   // ─── NEARBY (médecins libéraux mobiles disponibles) ───────────
 
   async nearby(query: NearbyMedecinsQuery) {

@@ -13,6 +13,7 @@ import {
   updateLocationSchema,
   setScheduleSchema,
   rejectKycSchema,
+  listKycSchema,
 } from '../validators/medecin.validators';
 import { getAvailabilitySchema } from '../validators/appointment.validators';
 
@@ -109,6 +110,19 @@ router.post(
 );
 
 // ─── Routes admin ─────────────────────────────────────────────────
+
+/**
+ * GET /medecins/admin/kyc?status=PENDING
+ * Lister les médecins par statut KYC (SUPER_ADMIN)
+ * ⚠️ Avant /admin/:id/... pour éviter le conflit de paramètre
+ */
+router.get(
+  '/admin/kyc',
+  authenticate,
+  authorize(UserRole.SUPER_ADMIN),
+  validateQuery(listKycSchema),
+  medecinController.listKyc
+);
 
 /**
  * POST /medecins/admin/:id/approve-kyc

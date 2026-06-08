@@ -353,7 +353,38 @@ async function main() {
     },
   });
 
-  console.log(`   ✅ 3 médecins créés`);
+  // Médecin en attente de validation KYC (pour démontrer l'espace SUPER_ADMIN)
+  await prisma.user.upsert({
+    where: { phoneNumber: '+221780000004' },
+    update: {},
+    create: {
+      phoneNumber: '+221780000004',
+      email: 'dr.ndiaye.pediatre@sante-senegal.sn',
+      passwordHash: medecinPasswordHash,
+      role: UserRole.MEDECIN_SALARIE,
+      firstName: 'Aïssatou',
+      lastName: 'Ndiaye',
+      gender: Gender.FEMME,
+      preferredLanguage: Language.FR,
+      isPhoneVerified: true,
+      kycStatus: 'PENDING',
+      medecinProfile: {
+        create: {
+          licenseNumber: 'CNOM-SN-013456',
+          specialties: [MedicalSpecialty.PEDIATRIE],
+          yearsOfExperience: 6,
+          languages: [Language.FR, Language.WO],
+          bio: 'Pédiatre, demande d\'inscription en attente de validation',
+          establishmentId: hopitalPrincipal.id,
+          consultationPriceMin: 15000,
+          consultationPriceMax: 25000,
+          isVerified: false,
+        },
+      },
+    },
+  });
+
+  console.log(`   ✅ 4 médecins créés (dont 1 en attente de validation KYC)`);
 
   // ═══════════════════════════════════════════════════════════════
   // 5. PHARMACIE + PHARMACIEN

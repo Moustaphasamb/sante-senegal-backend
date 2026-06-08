@@ -4,6 +4,7 @@ import { sendSuccess, sendCreated, sendNoContent } from '../utils/response';
 import { UnauthorizedError, BadRequestError } from '../utils/errors';
 import type {
   ListMedecinsQuery,
+  ListKycQuery,
   NearbyMedecinsQuery,
   UpdateMedecinProfileInput,
   UploadDocumentInput,
@@ -20,6 +21,18 @@ class MedecinController {
       const query = req.query as unknown as ListMedecinsQuery;
       const result = await medecinService.list(query);
       sendSuccess(res, result.medecins, { meta: result.meta });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ─── LISTE PAR STATUT KYC (SUPER_ADMIN) ──────────────────────
+
+  listKyc = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { status } = req.query as unknown as ListKycQuery;
+      const medecins = await medecinService.listByKyc(status);
+      sendSuccess(res, medecins);
     } catch (error) {
       next(error);
     }
