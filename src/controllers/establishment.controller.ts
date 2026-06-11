@@ -7,6 +7,7 @@ import type {
   NearbyEstablishmentsQuery,
   CreateEstablishmentInput,
   UpdateEstablishmentInput,
+  AttachMedecinInput,
 } from '../validators/establishment.validators';
 
 class EstablishmentController {
@@ -81,6 +82,49 @@ class EstablishmentController {
         req.user.role
       );
       sendSuccess(res, updated, { message: 'Établissement mis à jour avec succès' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ─── MÉDECINS DE MON ÉTABLISSEMENT ───────────────────────────
+
+  listMyMedecins = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      const medecins = await establishmentService.listMyMedecins(req.user.userId);
+      sendSuccess(res, medecins);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  attachMedecin = async (
+    req: Request<{}, {}, AttachMedecinInput>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      const medecin = await establishmentService.attachMedecin(
+        req.user.userId,
+        req.body.phoneNumber
+      );
+      sendCreated(res, medecin, 'Médecin rattaché avec succès');
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  detachMedecin = async (
+    req: Request<{ medecinId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      await establishmentService.detachMedecin(req.user.userId, req.params.medecinId);
+      sendNoContent(res);
     } catch (error) {
       next(error);
     }

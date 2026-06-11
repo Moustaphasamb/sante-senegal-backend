@@ -8,6 +8,7 @@ import {
   nearbyEstablishmentsSchema,
   createEstablishmentSchema,
   updateEstablishmentSchema,
+  attachMedecinSchema,
 } from '../validators/establishment.validators';
 
 const router = Router();
@@ -28,6 +29,32 @@ router.get(
   '/nearby',
   validateQuery(nearbyEstablishmentsSchema),
   establishmentController.nearby
+);
+
+/**
+ * Gestion des médecins de MON établissement (ADMIN_ÉTABLISSEMENT)
+ * ⚠️ Déclaré avant /:id pour éviter le conflit de paramètre
+ */
+router.get(
+  '/me/medecins',
+  authenticate,
+  authorize(UserRole.ADMIN_ETABLISSEMENT),
+  establishmentController.listMyMedecins
+);
+
+router.post(
+  '/me/medecins',
+  authenticate,
+  authorize(UserRole.ADMIN_ETABLISSEMENT),
+  validateBody(attachMedecinSchema),
+  establishmentController.attachMedecin
+);
+
+router.delete(
+  '/me/medecins/:medecinId',
+  authenticate,
+  authorize(UserRole.ADMIN_ETABLISSEMENT),
+  establishmentController.detachMedecin
 );
 
 /**

@@ -387,6 +387,35 @@ async function main() {
   console.log(`   ✅ 4 médecins créés (dont 1 en attente de validation KYC)`);
 
   // ═══════════════════════════════════════════════════════════════
+  // 4bis. ADMIN D'ÉTABLISSEMENT (gère l'Hôpital Principal)
+  // ═══════════════════════════════════════════════════════════════
+  console.log('🏛️  Création de l\'admin d\'établissement...');
+
+  const adminEtab = await prisma.user.upsert({
+    where: { phoneNumber: '+221760000001' },
+    update: {},
+    create: {
+      phoneNumber: '+221760000001',
+      email: 'cheikh.gueye@hopital-principal.sn',
+      passwordHash: await bcrypt.hash('AdminEtab2026!', 12),
+      role: UserRole.ADMIN_ETABLISSEMENT,
+      firstName: 'Cheikh',
+      lastName: 'Gueye',
+      gender: Gender.HOMME,
+      preferredLanguage: Language.FR,
+      isPhoneVerified: true,
+      kycStatus: 'APPROVED',
+      adminProfile: {
+        create: {
+          isSuperAdmin: false,
+          establishmentId: hopitalPrincipal.id,
+        },
+      },
+    },
+  });
+  console.log(`   ✅ Admin d'établissement créé : ${adminEtab.phoneNumber}`);
+
+  // ═══════════════════════════════════════════════════════════════
   // 5. PHARMACIE + PHARMACIEN
   // ═══════════════════════════════════════════════════════════════
   console.log('💊 Création des pharmacies...');

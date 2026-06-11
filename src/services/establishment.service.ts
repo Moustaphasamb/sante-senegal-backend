@@ -2,12 +2,39 @@ import { UserRole } from '@prisma/client';
 import { prisma } from '../config/database';
 import { NotFoundError, ForbiddenError, ConflictError, BadRequestError } from '../utils/errors';
 import { logger } from '../utils/logger';
+import { normalizePhoneNumber } from '../utils/otp';
 import type {
   ListEstablishmentsQuery,
   NearbyEstablishmentsQuery,
   CreateEstablishmentInput,
   UpdateEstablishmentInput,
 } from '../validators/establishment.validators';
+
+// Rôles considérés comme « médecin » (rattachables à un établissement)
+const MEDECIN_ROLES: UserRole[] = [
+  UserRole.MEDECIN_SALARIE,
+  UserRole.MEDECIN_LIBERAL_MOBILE,
+  UserRole.SPECIALISTE_CABINET,
+];
+
+// Sélection commune pour la liste des médecins d'un établissement
+const MEDECIN_LIST_SELECT = {
+  id: true,
+  specialties: true,
+  languages: true,
+  yearsOfExperience: true,
+  isMobileAvailable: true,
+  user: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      phoneNumber: true,
+      profilePhotoUrl: true,
+      kycStatus: true,
+    },
+  },
+} as const;
 
 // ═══════════════════════════════════════════════════════════════════
 // Helpers
@@ -273,6 +300,87 @@ class EstablishmentService {
 
     logger.info('Établissement mis à jour', { id, userId });
     return updated;
+  }
+
+  // ─── GESTION DES MÉDECINS RATTACHÉS (ADMIN_ÉTABLISSEMENT) ─────
+
+  /**
+   * Récupère l'identifiant de l'établissement géré par l'admin connecté.
+   * @throws BadRequestError si l'admin n'a pas encore créé son établissement.
+   */
+  private async getMyEstablishmentId(userId: string): Promise<string> {
+    const adminProfile = await prisma.adminProfile.findUnique({
+      where: { userId },
+      select: { establishmentId: true },
+    });
+    if (!adminProfile?.establishmentId) {
+      throw new BadRequestError("Créez d'abord votre établissement");
+    }
+    return adminProfile.establishmentId;
+  }
+
+  async listMyMedecins(userId: string) {
+    const establishmentId = await this.getMyEstablishmentId(userId);
+    return prisma.medecinProfile.findMany({
+      where: { establishmentId },
+      select: MEDECIN_LIST_SELECT,
+      orderBy: { user: { lastName: 'asc' } },
+    });
+  }
+
+  async attachMedecin(userId: string, phoneNumber: string) {
+    const establishmentId = await this.getMyEstablishmentId(userId);
+    const normalized = normalizePhoneNumber(phoneNumber);
+
+    const user = await prisma.user.findUnique({
+      where: { phoneNumber: normalized },
+      include: { medecinProfile: true },
+    });
+    if (!user || !user.medecinProfile) {
+      throw new NotFoundError('Médecin');
+    }
+    if (!MEDECIN_ROLES.includes(user.role)) {
+      throw new BadRequestError("Cet utilisateur n'est pas un médecin");
+    }
+    // Anti-vol : un médecin déjà rattaché ailleurs ne peut pas être capté
+    if (
+      user.medecinProfile.establishmentId &&
+      user.medecinProfile.establishmentId !== establishmentId
+    ) {
+      throw new ConflictError('Ce médecin est déjà rattaché à un autre établissement');
+    }
+
+    const medecin = await prisma.medecinProfile.update({
+      where: { id: user.medecinProfile.id },
+      data: { establishmentId },
+      select: MEDECIN_LIST_SELECT,
+    });
+
+    logger.info('Médecin rattaché', {
+      medecinId: medecin.id,
+      establishmentId,
+      userId,
+    });
+    return medecin;
+  }
+
+  async detachMedecin(userId: string, medecinId: string): Promise<void> {
+    const establishmentId = await this.getMyEstablishmentId(userId);
+
+    const medecin = await prisma.medecinProfile.findUnique({
+      where: { id: medecinId },
+      select: { id: true, establishmentId: true },
+    });
+    if (!medecin || medecin.establishmentId !== establishmentId) {
+      throw new NotFoundError('Médecin');
+    }
+
+    await prisma.medecinProfile.update({
+      where: { id: medecinId },
+      data: { establishmentId: null },
+    });
+
+    logger.info('Médecin retiré de l\'établissement', { medecinId, establishmentId, userId });
   }
 
   // ─── DÉSACTIVATION (soft delete via isActive) ─────────────────

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { EstablishmentType, MedicalSpecialty } from '@prisma/client';
+import { isValidSenegalPhoneNumber } from '../utils/otp';
 
 // ═══════════════════════════════════════════════════════════════════
 // HELPERS LOCAUX
@@ -113,6 +114,19 @@ export const updateEstablishmentSchema = createEstablishmentSchema.partial().ext
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// RATTACHEMENT D'UN MÉDECIN (POST /establishments/me/medecins)
+// ═══════════════════════════════════════════════════════════════════
+
+export const attachMedecinSchema = z.object({
+  phoneNumber: z
+    .string()
+    .min(9, 'Numéro de téléphone trop court')
+    .refine(isValidSenegalPhoneNumber, {
+      message: 'Numéro de téléphone sénégalais invalide. Format attendu : +221XXXXXXXXX',
+    }),
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // TYPES INFÉRÉS
 // ═══════════════════════════════════════════════════════════════════
 
@@ -120,3 +134,4 @@ export type ListEstablishmentsQuery = z.infer<typeof listEstablishmentsSchema>;
 export type NearbyEstablishmentsQuery = z.infer<typeof nearbyEstablishmentsSchema>;
 export type CreateEstablishmentInput = z.infer<typeof createEstablishmentSchema>;
 export type UpdateEstablishmentInput = z.infer<typeof updateEstablishmentSchema>;
+export type AttachMedecinInput = z.infer<typeof attachMedecinSchema>;
